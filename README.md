@@ -19,4 +19,4 @@ We welcome contributions from the community! If you have ideas for new features 
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is released under the [Apache 2.0 license](https://github.com/phitrann/arXivRAG/blob/main/LICENSE). See the LICENSE file for details.
