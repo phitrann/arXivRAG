@@ -1,0 +1,23 @@
+services:
+  arvixrag_chromadb:
+    hostname: chromadb
+    image: chromadb/chroma:0.5.5
+    ports:
+    - 8000:8000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PSERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - ./.storage/chromadb_storage:/chroma/chroma
+    networks:
+      - arvixrag_network   
+
+networks:
+  arvixrag_network:
+    name: arvixrag_network
+    external: true
