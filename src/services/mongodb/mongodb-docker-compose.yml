@@ -1,0 +1,24 @@
+services:
+  arvixrag_mongodb:
+    hostname: mongodb
+    image: mongodb/mongodb-community-server:6.0-ubi8 
+    ports:
+      - 27017:27017
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.runCommand('ping').ok", "localhost:27017/test", "--quiet"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=admin
+      - MONGODB_INITDB_ROOT_PASSWORD=supersecret
+    volumes:
+      - ./.storage/mongodb_storage:/data/db
+      - ./.storage/mongodb_configdb:/data/configdb
+    networks: 
+      - arvixrag_network   
+
+networks:
+  arvixrag_network:
+    name: arvixrag_network
+    external: true
