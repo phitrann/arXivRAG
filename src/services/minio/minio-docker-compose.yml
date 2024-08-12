@@ -4,8 +4,8 @@ services:
     image: minio/minio:RELEASE.2024-08-03T04-33-23Z
     command: server --console-address ":9001" /data
     ports:
-      - 9000:9000
-      - 9001:9001
+      - 9800:9000
+      - 9801:9001
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -17,10 +17,10 @@ services:
     volumes:
       - ./.storage/minio_storage:/data
     networks:
-      - arvixrag_network
+      - arxivrag_network
 
 networks:
   arvixrag_network:
-    name: arvixrag_network
+    name: arxivrag_network
     external: true
       

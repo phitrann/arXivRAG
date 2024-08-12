@@ -15,9 +15,9 @@ services:
     volumes:
       - ./.storage/chromadb_storage:/chroma/chroma
     networks:
-      - arvixrag_network   
+      - arxivrag_network
 
 networks:
   arvixrag_network:
-    name: arvixrag_network
+    name: arxivrag_network
     external: true

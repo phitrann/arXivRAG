@@ -16,9 +16,9 @@ services:
       - ./.storage/mongodb_storage:/data/db
       - ./.storage/mongodb_configdb:/data/configdb
     networks: 
-      - arvixrag_network   
+      - arxivrag_network   
 
 networks:
-  arvixrag_network:
-    name: arvixrag_network
+  arxivrag_network:
+    name: arxivrag_network
     external: true
