@@ -1,3 +1,8 @@
 */.storage/*
 */.storage
 .storage
+
+
+*/__pycache__
+*/__pycache__/*
+__pycache__

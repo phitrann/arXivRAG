@@ -104,7 +104,7 @@ services:
       start_period: 5s
     restart: always
     networks: 
-      - arvixrag_network 
+      - arxivrag_network 
 
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
@@ -120,7 +120,7 @@ services:
       start_period: 30s
     restart: always
     networks: 
-      - arvixrag_network 
+      - arxivrag_network 
 
   airflow-webserver:
     <<: *airflow-common
@@ -292,6 +292,6 @@ services:
         condition: service_completed_successfully
 
 networks:
-  arvixrag_network:
-    name: arvixrag_network
+  arxivrag_network:
+    name: arxivrag_network
     external: true
