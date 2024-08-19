@@ -1,8 +1,14 @@
-*/.storage/*
-*/.storage
-.storage
+*/.data/*
+*/.data
+.data
 
+*/.chainlit/*
+*/.chainlit
 
 */__pycache__
 */__pycache__/*
 __pycache__
+
+
+*.parquet
+*.csv
