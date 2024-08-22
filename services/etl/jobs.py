@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--start_year", type=int, required=True, help="Start year of latest updated papers")
     parser.add_argument("--max_results", type=int, default=10, help="Maximum number of papers to fetch")
     parser.add_argument("--embedding_model", type=str, default="BAAI/llm-embedder" ,help="Hugging Face embedding model name")
+    parser.add_argument("--vector_dim", type=int, default=768, help="Dimension of the embedding vector")
     parser.add_argument("--device", type=str, default="cuda", help="Device to run the embedding model")
     args = parser.parse_args()
 
@@ -51,7 +52,7 @@ if __name__ == "__main__":
 
     # Initialize the vector store
     vector_store = MilvusVectorStore(
-        dim=768,
+        dim=args.vector_dim,
         collection_name=os.getenv("MILVUS_COLLECTION_NAME"),
         overwrite=True, # overwrite the collection if it already exists
         uri=os.getenv("MILVUS_URI"),
