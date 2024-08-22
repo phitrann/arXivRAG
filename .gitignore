@@ -5,6 +5,8 @@
 */.chainlit/*
 */.chainlit
 
+services/etl/model_cache/*
+
 */__pycache__
 */__pycache__/*
 __pycache__
@@ -12,3 +14,4 @@ __pycache__
 
 *.parquet
 *.csv
+*.env
