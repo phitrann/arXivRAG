@@ -16,7 +16,7 @@
 ## 💻 Usage
 
 ## ❤️ Contributors
-[![Contributors](https://contrib.rocks/image?repo=phitrann/arXivRAG)](https://github.com/phitrann/arXivRAG/graphs/contributors)
+![](https://contrib.rocks/image?repo=phitrann/arXivRAG)
 
 We welcome contributions from the community! If you have ideas for new features or improvements, feel free to open an issue or submit a pull request.
 
