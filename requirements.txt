@@ -1,0 +1,8 @@
+beautifulsoup4==4.12.3
+llama-index==0.10.67.post1
+llama-index-embeddings-huggingface==0.2.3
+llama-index-vector-stores-milvus==0.1.23
+minio==7.2.8
+pymilvus==2.4.5
+PyMuPDF==1.24.9
+python-dotenv==1.0.1
