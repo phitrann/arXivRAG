@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from ultils import (
     ETL,
     Fetcher,
-    HuggingFaceEmbedding,
+    OllamaEmbedding,
     MilvusVectorStore,
     Minio,
     PyMuPDFReader,
@@ -23,10 +23,14 @@ if __name__ == "__main__":
     parser.add_argument("--start_month", type=int, required=True, help="Start month of latest updated papers")
     parser.add_argument("--start_year", type=int, required=True, help="Start year of latest updated papers")
     parser.add_argument("--max_results", type=int, default=10, help="Maximum number of papers to fetch")
-    parser.add_argument("--embedding_model", type=str, default="BAAI/llm-embedder" ,help="Hugging Face embedding model name")
+    parser.add_argument("--embedding_model", type=str, default="llm-embedder-q4_k_m" ,help="Ollama embedding model name")
     parser.add_argument("--vector_dim", type=int, default=768, help="Dimension of the embedding vector")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to run the embedding model")
+    # parser.add_argument("--device", type=str, default="cuda", help="Device to run the embedding model")
+    parser.add_argument("--overwrite_collection", action="store_true", help="Overwrite the existing collection in vector store")
     args = parser.parse_args()
+
+    # Set which host to skip proxy
+    os.environ['NO_PROXY'] = os.getenv("NO_PROXY_HOST")
 
     # Define categories of papers to fetch
     categories_list = [
@@ -63,10 +67,9 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join(folder_path, "model_cache")):
         os.makedirs(os.path.join(folder_path, "model_cache"))
         print("Model cache folder is created")
-    embed_model = HuggingFaceEmbedding(
+    embed_model = OllamaEmbedding(
         model_name=args.embedding_model,
-        cache_folder=os.path.join(folder_path, "model_cache"),
-        device=args.device
+        base_url=os.getenv("OLLAMA_EMBEDDING_URL"),
     )
     print("Embedding model is initialized")
 
