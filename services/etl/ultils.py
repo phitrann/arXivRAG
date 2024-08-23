@@ -1,11 +1,14 @@
 import io
 import json
 import os
-import requests
 import urllib
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from typing import List, Tuple
+
+import requests
+from requests.exceptions import ChunkedEncodingError
 
 from minio import Minio
 
@@ -89,7 +92,8 @@ class Fetcher():
 
             # Count number of papers
             num_papers = len(root.findall('atom:entry', namespace))
-            print(f"\nFound {num_papers} papers for the date: {search_start_time.replace('*', '')}")
+            date = datetime.strptime(search_start_time.replace('*', ''), "%Y%m%d").strftime("%d/%m/%Y")
+            print(f"\nFound {num_papers} papers for the date: {date}") 
 
             for entry in root.findall('atom:entry', namespace):
                 title = entry.find('atom:title', namespace).text
@@ -123,8 +127,20 @@ class Fetcher():
                 )
 
                 # Download PDF
+                retries = 3
+                backoff_factor = 0.3 # Time (seconds) to wait between retries
                 url = f'https://arxiv.org/pdf/{paper_code}'
-                response = requests.get(url)
+                for attempt in range(retries):
+                    try:
+                        response = requests.get(url)
+                    except ChunkedEncodingError as e:
+                        if attempt < retries - 1:
+                            sleep_time = backoff_factor * (2 ** attempt)
+                            print(f"ChunkedEncodingError encountered. Retrying in {sleep_time} seconds...")
+                            time.sleep(sleep_time)
+                        else:
+                            print("Max retries reached. Failed to download PDF.")
+                            continue
 
                 # Save PDF
                 if response.status_code != 200:
