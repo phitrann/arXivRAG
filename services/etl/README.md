@@ -7,7 +7,7 @@ Hi there, Developer! 👋 The following steps will help you perfrom papers fetch
         ```python
         python services/etl/jobs.py --start_day 19 --start_month 8 --start_year 2024
         ```
-    - The default embedding model is [llm-embedder-q4_k_m](https://huggingface.co/itskoi/llm-embedder-Q4_K_M-GGUF/tree/main), which will generate embedding with size `768`. This model, based on [BAAI/llm-embedder](https://huggingface.co/BAAI/llm-embedder), is hosted by us through **Ollama** service. You can modify the model name depending on your own hosted model. This will require you to change the value of environment variable `OLLAMA_EMBEDDING_URL` in **.env** file.
+    - The default embedding model is [llm-embedder-q4_k_m](https://huggingface.co/itskoi/llm-embedder-Q4_K_M-GGUF/tree/main), which will generate embedding with size `768`. This model, based on [BAAI/llm-embedder](https://huggingface.co/BAAI/llm-embedder), is hosted by us through **Ollama** service. You can modify the model name depending on your own hosted model. This will require you to change the value of environment variable `OLLAMA_EMBEDDING_URL` in **.env** file. You also need to add the host value to `NO_PROXY_HOST` if the server you're running has proxy.
     - You also need to fill in the values of needed variables in `.env` file saved in folder [etl](../etl/).
         ```bash
         MINIO_ENDPOINT=
