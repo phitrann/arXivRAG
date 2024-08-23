@@ -11,7 +11,7 @@ from minio import Minio
 
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.readers.file import PyMuPDFReader
 from llama_index.vector_stores.milvus import MilvusVectorStore
 
@@ -149,7 +149,7 @@ class Fetcher():
 class ETL():
     """ETL class to extract arXiv papers, transform them into text nodes as embeddings, and load them into the vector store."""
 
-    def __init__(self, root_folder: str, vector_store: MilvusVectorStore, embed_model: HuggingFaceEmbedding, MinIO_client: Minio, bucket_name: str = "arxiv-papers") -> None:
+    def __init__(self, root_folder: str, vector_store: MilvusVectorStore, embed_model: OllamaEmbedding, MinIO_client: Minio, bucket_name: str = "arxiv-papers") -> None:
         self.root_folder = root_folder
         self.vector_store = vector_store
         self.embed_model = embed_model
