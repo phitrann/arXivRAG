@@ -1,24 +1,27 @@
 import os
 import chainlit as cl
 import loguru
+import dotenv
 
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.service_context import ServiceContext
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core import get_response_synthesizer
-from llama_index.llms.ollama import Ollama
 from llama_index.core import Settings
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 
 from utils import VectorDBRetriever
+import sys
+sys.path.append(os.path.abspath('../'))
+from llm_serving.llm import KoiLLM
+from llm_serving.embedder import InstructorEmbeddings
 
-os.environ["NO_PROXY"] = "localhost"
+dotenv.load_dotenv()
 
 try:
     vector_store = MilvusVectorStore(
-        dim=384,
+        dim=768,
         collection_name="arxiv",
         uri="http://localhost:19530"
     )
@@ -27,8 +30,10 @@ except:
 
 @cl.on_chat_start
 async def start():
-    llm =  Ollama(base_url="http://localhost:11434", model="llama3.1", request_timeout=60.0)
-    embed_model = HuggingFaceEmbedding(model_name = "sentence-transformers/all-MiniLM-L6-v2", device="cuda")
+    # llm =  Ollama(base_url="http://localhost:11434", model="llama3.1", request_timeout=60.0)
+    llm = KoiLLM(num_output=256, temperature=0.5, top_k=50, top_p=0.95)
+    # embed_model = OllamaEmbedding(model_name="llm-embedder-q4_k_m", base_url="http://localhost:11434",)
+    embed_model = InstructorEmbeddings(model_name="BAAI/llm-embedder")
     retriever = VectorDBRetriever(vector_store=vector_store, embed_model=embed_model, query_mode="default", similarity_top_k=2)    
 
     Settings.llm = llm
