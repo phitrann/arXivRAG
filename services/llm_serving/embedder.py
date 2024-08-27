@@ -27,7 +27,7 @@ class InstructorEmbeddings(BaseEmbedding):
             key_val = "key" if call_type == "key_embedding" else "keys"
             key_val = "query" if call_type == "query_embedding" else key_val
             response = requests.post(
-                f"http://localhost:8081/{call_type}",
+                f"http://172.16.87.76:8081/{call_type}",
                 json={
                     key_val: prompt if len(prompt) else prompts, 
                     "instruction": "qa",

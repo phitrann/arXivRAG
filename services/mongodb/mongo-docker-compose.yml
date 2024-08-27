@@ -1,0 +1,16 @@
+services:
+  mongodb:
+    hostname: mongodb
+    image: mongo:7.0.12
+    ports:
+      - 27017:27017
+    volumes:
+      - ./.data:/data/db
+    # networks:
+    #   - arxivrag_network
+
+# networks:
+#   arxivrag_network:
+#     name: arxivrag_network
+#     external: true
+      
