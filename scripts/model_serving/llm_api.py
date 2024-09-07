@@ -23,15 +23,15 @@ class InputData(BaseModel):
             "top_p": 0.95,
             "length_penalty": -0.1,
             "repetition_penalty": 1.5,
-            "num_beams": 3,
-            "do_sample": True
+            "num_beams": 1,
+            "do_sample": False 
         }
     )
 
 class OutputData(BaseModel):
     text: str = ""
 
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
 tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3.1-8B-Instruct")
 model.to(device)

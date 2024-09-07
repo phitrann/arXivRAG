@@ -1,0 +1,3 @@
+FROM ./llm-embedder-q4_k_m.gguf
+TEMPLATE {{ .Prompt }}
+PARAMETER num_ctx 512

@@ -1,9 +1,6 @@
 from typing import Any
 from loguru import logger
 import requests
-import os
-import dotenv
-import json
 
 from llama_index.core.llms import (
     CustomLLM,
@@ -13,10 +10,10 @@ from llama_index.core.llms import (
 )
 from llama_index.core.llms.callbacks import llm_completion_callback
 
-dotenv.load_dotenv()
 
 class LLMHandler(CustomLLM):
-    num_output: int = 1024
+    uri: str = "http://172.16.87.76:8088"
+    max_new_tokens: int = 128
     model_name: str = "llama3.1:8b-instruct"
     temperature: float = 0.8
     top_k: int = 50
@@ -26,18 +23,19 @@ class LLMHandler(CustomLLM):
         for chunk in stream_object:
             if chunk:
                 text = chunk.decode("utf-8", errors="ignore")
-                # if text != '<|eot_id|>':
-                #     yield ""
                 yield text
 
     def APICall(self, call_type: str, prompt: str) -> str:
+        logger.info(f"Calling LLM API with type: {call_type}")
         generation_params = {
-            "max_new_tokens": self.num_output,
+            "max_new_tokens": self.max_new_tokens,
             "temperature": self.temperature,
             "top_k": self.top_k,
             "top_p": self.top_p,
             "length_penalty": -0.1,
             "repetition_penalty": 1.5,
+            "num_beams": 1,
+            "do_sample": False
         }
 
         payload = {
@@ -48,7 +46,7 @@ class LLMHandler(CustomLLM):
         if call_type == "stream":
             try:
                 response = requests.post(
-                    url="http://localhost:8088/stream",
+                    url=f"{self.uri}/stream",
                     json=payload,
                     stream=True,
                 )
@@ -59,7 +57,7 @@ class LLMHandler(CustomLLM):
         elif call_type == "generate":
             try:
                 response = requests.post(
-                    url="http://localhost:8088/generate",
+                    url=f"{self.uri}/generate",
                     json=payload,
                 )
                 return response.json()["text"]
@@ -72,7 +70,7 @@ class LLMHandler(CustomLLM):
     def metadata(self) -> LLMMetadata:
         """Get LLM metadata."""
         return LLMMetadata(
-            num_output=self.num_output,
+            max_new_tokens=self.max_new_tokens,
             temperature=self.temperature,
             top_k=self.top_k,
             top_p=self.top_p,
