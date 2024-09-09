@@ -29,7 +29,7 @@ class VectorDBRetriever(BaseRetriever):
 
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """Retrieve."""
-        query_embedding = self._embed_model.get_text_embedding(query_bundle.query_str)
+        query_embedding = self._embed_model.get_query_embedding(query_bundle.query_str)
         vector_store_query = VectorStoreQuery(
             query_embedding=query_embedding,
             similarity_top_k=self._similarity_top_k,
