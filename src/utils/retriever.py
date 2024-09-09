@@ -1,12 +1,12 @@
 from typing import List, Optional
-import torch
 
 from llama_index.core import QueryBundle
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.core.vector_stores import VectorStoreQuery
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+from utils.embedder import InstructorEmbeddings
 
 class VectorDBRetriever(BaseRetriever):
     """Retriever over a postgres vector store."""
@@ -14,7 +14,7 @@ class VectorDBRetriever(BaseRetriever):
     def __init__(
         self,
         vector_store: MilvusVectorStore,
-        embed_model: HuggingFaceEmbedding,
+        embed_model: InstructorEmbeddings,
         query_mode: str = "default",
         similarity_top_k: int = 2,
     ) -> None:

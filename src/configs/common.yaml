@@ -1,0 +1,41 @@
+milvus:
+  dim: 768
+  collection_name: "arxiv"
+  uri: "http://172.16.87.76:19530"
+
+embedding:
+  uri: "http://172.16.87.76:8081" 
+  model_name: "BAAI/llm-embedder"
+
+llm:
+  uri: "http://172.16.87.76:8088"
+  model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+  request_timeout: 60.0
+
+mongodb:
+  uri: "172.16.87.76:27017"
+  username: "admin"
+  password: "supersecret"
+
+minio:
+  uri: "http://172.16.87.76:9000"
+
+
+chat_history:
+  max_history: 10
+  database_name: "chat_history"
+  collection_name: "test_chat"
+
+retriever:
+  similarity_top_k: 3
+
+llm_settings:
+  context_window: 4096
+  max_new_tokens: 256
+  temperature: 0.8
+  top_k: 50
+  top_p: 0.95
+  length_penalty: -0.1
+  repetition_penalty: 1.5
+  num_beams: 3
+  do_sample: true
