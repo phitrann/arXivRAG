@@ -1,4 +1,5 @@
 from typing import List, Optional
+from loguru import logger
 
 from llama_index.core import QueryBundle
 from llama_index.core.retrievers import BaseRetriever
@@ -41,6 +42,7 @@ class VectorDBRetriever(BaseRetriever):
             score: Optional[float] = None
             if query_result.similarities is not None:
                 score = query_result.similarities[index]
+                logger.info(f"Node: {node}, Score: {score}")
             nodes_with_scores.append(NodeWithScore(node=node, score=score))
 
         return nodes_with_scores
