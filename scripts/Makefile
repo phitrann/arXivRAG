@@ -1,6 +1,6 @@
 # Makefile for dev stage
 
-.PHONY: all setup minio milvus ollama
+.PHONY: all setup minio milvus ollama mongodb
 
 # Define the Docker network name
 DOCKER_NETWORK = arxivrag_network
@@ -33,4 +33,9 @@ milvus:
 	@docker compose -f milvus/milvus-docker-compose.yml up -d
 	@echo "Milvus services are up and running."
 
+# Run MongoDB setup
+mongodb:
+	@mkdir -p mongodb/.data mongodb/.data/mongodb_storage mongodb/.data/mongodb_configdb
+	@docker compose -f mongodb/mongo-docker-compose.yml up -d
+	@echo "MongoDB services are up and running."
 

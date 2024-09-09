@@ -1,9 +1,6 @@
-*/.data/*
-*/.data
 .data
 
-*/.chainlit/*
-*/.chainlit
+.chainlit
 
 services/etl/model_cache/*
 
