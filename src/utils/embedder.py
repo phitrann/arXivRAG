@@ -55,7 +55,7 @@ class InstructorEmbeddings(BaseEmbedding):
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         response = self._APICall(
-            call_type="key_embeddings", embedding_type="embeddings", prompt=texts
+            call_type="key_embeddings", embedding_type="embeddings", prompts=texts
         )
         return response
 
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     embedder = InstructorEmbeddings(uri="http://172.16.87.76:8081",model_name="BAAI/llm-embedder")
     query = "Encode this query and context for searching relevant passages: "
     key = "Encode this passage for retrieval: "
-    print(embedder._get_query_embedding(query))
+    # print(embedder._get_query_embedding(query))
     # print(embedder._get_text_embedding(key))
-    # print(embedder._get_text_embeddings([key, key]))
+    print(embedder._get_text_embeddings([key, key]))
