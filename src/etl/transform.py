@@ -45,11 +45,17 @@ class Transformer():
         # Get paper from Minio
         paper_obj = self.storage_client.get_object(
             bucket_name="arxiv-papers",
-            object_name=paper_path
+            object_name=f'processed_papers/{paper_path}'
+        )
+
+        paper_metadata_obj = self.storage_client.get_object(
+            bucket_name="arxiv-papers",
+            object_name=f'metadata/{paper_path}'
         )
 
         # Load paper as json
         paper = json.load(paper_obj)
+        paper_metadata = json.load(paper_metadata_obj)
 
         # Create document from paper
         text_list = [section['text'] for section in paper['sections'] if len(section['text']) > 0]
@@ -58,14 +64,10 @@ class Transformer():
         # Chunk documents
         nodes = self.chunker.chunk_batch(text_list)
 
-        metadata = {
-            "title": paper['title'],
-            "authors": paper['authors'],
-            "published": paper['pub_date']
-        }
+        paper_metadata['published'] = paper['pub_date']
         for node in nodes:
             node.embedding = self.embedder.embed_doc(node.text)
-            node.metadata = metadata
+            node.metadata = paper_metadata
 
         return nodes
 
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     )
 
     transformer = Transformer(client, chunker, embedder)
-    nodes = transformer.transform(paper_path="processed_papers/20240101/2305.09126v3.json")
+    nodes = transformer.transform(paper_path="20240101/2305.09126v3.json")
     print(len(nodes[0].embedding))
     print(nodes[0].metadata)
     print(nodes[0].text)
