@@ -1,6 +1,6 @@
 # Welcome to ArXiv papers fetching and ETL process! 🚀🤖
 
-Hi there, Developer! 👋 The following steps will help you perfrom papers fetching and ETL:
+Hi there, Developer! 👋 The following steps will help you perform papers fetching and ETL:
 - First, you need to run [category_crawler.py](./category_crawler.py) to get list of subcategories ID based on your desire categories, which is stored in [arxiv_category.json](./arxiv_category.json).
 - Then run `jobs.py` script to fetch ArXiv papers and perform ETL to transform these papers into important embeddings and load them into vector database. 
     - Sample command to fetch all pappers from Aug 19, 2024 to the current date:
