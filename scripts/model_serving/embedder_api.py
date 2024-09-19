@@ -44,7 +44,6 @@ INSTRUCTIONS = {
 class InputData(BaseModel):
     query: str = ""
     key: str = ""
-    queries: List[str] = []
     keys: List[str] = []
     instruction: str = "qa"
 
