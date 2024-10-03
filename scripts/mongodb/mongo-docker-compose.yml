@@ -22,7 +22,7 @@ services:
     hostname: mongo-express
     image: mongo-express
     ports:
-      - 8090:8081
+      - 8091:8081
     environment:
       - ME_CONFIG_MONGODB_ENABLE_ADMIN=false
       - ME_CONFIG_MONGODB_AUTH_USERNAME=admin

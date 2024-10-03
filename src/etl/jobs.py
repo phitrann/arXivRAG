@@ -1,109 +1,122 @@
 import os
+import sys
 import argparse
-from dotenv import load_dotenv
-from ultils import (
-    ETL,
-    Fetcher,
-    OllamaEmbedding,
+
+from loguru import logger
+from minio import Minio
+
+from etl import (
+    ArxivPDFParser,
+    Transformer,
+    ExtractTransformLoad,
     MilvusVectorStore,
-    Minio,
-    PyMuPDFReader,
-    SentenceSplitter
 )
+from data_fetching import DataFetcher
+
+# Import configs path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from configs import cfg
+from utils.embedder import InstructorEmbeddings
 
 if __name__ == "__main__":
-    folder_path = os.path.dirname(__file__)
-
-    # Load environment variables
-    load_dotenv(os.path.join(folder_path, ".env"))
-
     # Define argument parser
     parser = argparse.ArgumentParser(description="Fetch ArXiv papers and process them.")
-    parser.add_argument("--start_day", type=int, required=True, help="Start day of latest updated papers")
-    parser.add_argument("--start_month", type=int, required=True, help="Start month of latest updated papers")
-    parser.add_argument("--start_year", type=int, required=True, help="Start year of latest updated papers")
-    parser.add_argument("--max_results", type=int, default=10, help="Maximum number of papers to fetch")
-    parser.add_argument("--embedding_model", type=str, default="llm-embedder-q4_k_m" ,help="Ollama embedding model name")
-    parser.add_argument("--vector_dim", type=int, default=768, help="Dimension of the embedding vector")
+    parser.add_argument("--start_date", type=str, required=True, help="Start date (yyyymmdd)")
+    parser.add_argument("--end_date", type=str, required=True, help="End date (yyyymmdd)")
+    parser.add_argument(
+        "--job_type",
+        type=str,
+        default="etl",
+        help="Type of job to run (etl, fetch, or all)",
+    )
     # parser.add_argument("--device", type=str, default="cuda", help="Device to run the embedding model")
-    parser.add_argument("--overwrite_collection", action="store_true", help="Overwrite the existing collection in vector store")
+    parser.add_argument(
+        "--overwrite_collection",
+        action="store_true",
+        help="Overwrite the existing collection in vector store",
+    )
+    parser.add_argument("--skip_pdf_parsing", action="store_true", help="Skip PDF parsing")
     args = parser.parse_args()
 
-    # Set which host to skip proxy
-    os.environ['NO_PROXY'] = os.getenv("NO_PROXY_HOST")
-
-    # Define categories of papers to fetch
-    categories_list = [
-        'Computer Science',
-        'Electrical Engineering and Systems Science',
-        'Statistics',
-    ]
+    logger.add(f"logs/jobs_{args.start_date}_{args.end_date}_{args.job_type}.log", rotation="10 MB")
 
     # Initialize MinIO client
-    client = Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT"),
-        access_key=os.getenv("MINIO_ACCESS_KEY"),
-        secret_key=os.getenv("MINIO_SECRET_KEY"),
-        secure=False
+    logger.info("Initializing MinIO client...")
+    minio_cfgs = cfg["minio"]
+    minio_client = Minio(
+        endpoint=minio_cfgs["uri"],
+        access_key=minio_cfgs["access_key"],
+        secret_key=minio_cfgs["secret_key"],
+        secure=False,
     )
-    print("MinIO client is initialized")
-    bucket_name = os.getenv("MINIO_BUCKET_NAME")
+
+    # Set up ETL
+    etl_cfgs = cfg["etl"]
+    bucket_name = etl_cfgs["minio_bucket"]
 
     # Create bucket if it does not exist
-    if not client.bucket_exists(bucket_name):
-        client.make_bucket(bucket_name)
+    if not minio_client.bucket_exists(bucket_name):
+        minio_client.make_bucket(bucket_name)
         print(f"Bucket {bucket_name} is created")
 
-    # Initialize the vector store
-    vector_store = MilvusVectorStore(
-        dim=args.vector_dim,
-        collection_name=os.getenv("MILVUS_COLLECTION_NAME"),
-        overwrite=True, # overwrite the collection if it already exists
-        uri=os.getenv("MILVUS_URI"),
-    )
-    print("Vector store is initialized")
+    logger.info(f"Job type: {args.job_type}")
 
-    # Initialize the embedding model
-    if not os.path.exists(os.path.join(folder_path, "model_cache")):
-        os.makedirs(os.path.join(folder_path, "model_cache"))
-        print("Model cache folder is created")
-    embed_model = OllamaEmbedding(
-        model_name=args.embedding_model,
-        base_url=os.getenv("OLLAMA_EMBEDDING_URL"),
-    )
-    print("Embedding model is initialized")
-
-    # Initialize the PDF reader and text parser
-    pdf_reader = PyMuPDFReader()
-    text_parser = SentenceSplitter(chunk_size=1024)
-    print("PDF reader and text parser are initialized")
-
-    # Fetch ArXiv papers
-    print("\nFetching ArXiv papers...")
-    fetcher = Fetcher(
-        categories_list=categories_list,
-        arxiv_category_file_path=os.path.join(folder_path, "arxiv_category.json")
-    )
-    list_of_papers_path, list_of_papers_code = fetcher.fetch_papers(
-        start_day=args.start_day,
-        start_month=args.start_month,
-        start_year=args.start_year,
-        MinIO_client=client,
-        max_results=args.max_results
-    )
+    if args.job_type in ["fetch", "all"]:
+        # Fetch ArXiv papers
+        logger.info("Fetching ArXiv papers...")
+        fetcher = DataFetcher(
+            categories_list=etl_cfgs["categories_list"],
+            arxiv_category_file_path=etl_cfgs["arxiv_category_file_path"],
+        )
+        # TODO: Implement fetching papers
+        list_of_papers_path, list_of_papers_code = fetcher.fetch_papers(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            MinIO_client=minio_client,
+            max_results=args.max_results,
+        )
 
     # Perform ETL to load the papers into the vector database as embeddings
-    print("\nPerforming ETL...")
-    etl = ETL(
-        root_folder=folder_path,
-        vector_store=vector_store,
-        embed_model=embed_model,
-        MinIO_client=client,
-        bucket_name=bucket_name
-    )
-    etl.extract_transform_load(
-        list_of_papers_path=list_of_papers_path,
-        list_of_papers_code=list_of_papers_code,
-        text_parser=text_parser,
-        pdf_reader=pdf_reader
-    )
+    if args.job_type in ["etl", "all"]:
+
+        # Initialize the PDF parser
+        logger.info("Initializing PDF parser...")
+        pdf_parser = ArxivPDFParser(minio_client=minio_client)
+
+        # Initialize the transformer
+        logger.info("Initializing transformer...")
+        embedding_cfgs = cfg["embedding"]
+        embedder = InstructorEmbeddings(
+            uri=embedding_cfgs["uri"], model_name=embedding_cfgs["model_name"]
+        )
+        transformer = Transformer(
+            minio_client=minio_client,
+            minio_bucket=etl_cfgs["minio_bucket"],
+            minio_json_prefix=etl_cfgs["minio_json_prefix"],
+            minio_metadata_prefix=etl_cfgs["minio_metadata_prefix"],
+            chunk_size=etl_cfgs["chunk_size"],
+            chunk_overlap=etl_cfgs["chunk_overlap"],
+            embedder=embedder,
+        )
+
+        # Initialize the vector store
+        logger.info("Initializing vector store...")
+        milvus_cfgs = cfg["milvus"]
+        embedding_cfgs = cfg["embedding"]
+        vector_store = MilvusVectorStore(
+            dim=embedding_cfgs["dim"],
+            collection_name=etl_cfgs["milvus_collection"],
+            overwrite=True,  # overwrite the collection if it already exists
+            uri=milvus_cfgs["uri"],
+        )
+
+        # Perform ETL
+        logger.info("Performing ETL...")
+        etl = ExtractTransformLoad(
+            pdf_parser=pdf_parser,
+            transformer=transformer,
+            vector_store=vector_store,
+            skip_pdf_parsing=args.skip_pdf_parsing,
+        )
+        etl.process(start_date=args.start_date, end_date=args.end_date)
+

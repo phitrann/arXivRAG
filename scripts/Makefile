@@ -6,7 +6,7 @@
 DOCKER_NETWORK = arxivrag_network
 
 # Setup the environment
-all: setup ollama minio milvus
+all: setup ollama minio milvus mongodb
 vectordb: setup minio milvus
 llm: setup ollama
 

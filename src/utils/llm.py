@@ -10,7 +10,6 @@ from llama_index.core.llms import (
 )
 from llama_index.core.llms.callbacks import llm_completion_callback
 
-
 class LLMHandler(CustomLLM):
     uri: str = "http://172.16.87.76:8088"
     max_new_tokens: int = 128
@@ -18,6 +17,9 @@ class LLMHandler(CustomLLM):
     temperature: float = 0.8
     top_k: int = 50
     top_p: float = 0.95
+    num_beams: int = 3
+    do_sample: bool = True
+    request_timeout: int = 30
 
     def _stream_wrapper(self, stream_object):
         for chunk in stream_object:
@@ -34,8 +36,8 @@ class LLMHandler(CustomLLM):
             "top_p": self.top_p,
             "length_penalty": -0.1,
             "repetition_penalty": 1.5,
-            "num_beams": 1,
-            "do_sample": False
+            "num_beams": self.num_beams if call_type == "stream" else 1,
+            "do_sample": self.do_sample if call_type == "stream" else False
         }
 
         payload = {
@@ -49,6 +51,7 @@ class LLMHandler(CustomLLM):
                     url=f"{self.uri}/stream",
                     json=payload,
                     stream=True,
+                    timeout=self.request_timeout
                 )
                 stream = self._stream_wrapper(response.iter_content(chunk_size=1))
                 return stream
@@ -59,6 +62,7 @@ class LLMHandler(CustomLLM):
                 response = requests.post(
                     url=f"{self.uri}/generate",
                     json=payload,
+                    timeout=self.request_timeout
                 )
                 return response.json()["text"]
             except Exception as e:

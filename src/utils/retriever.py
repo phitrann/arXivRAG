@@ -46,3 +46,22 @@ class VectorDBRetriever(BaseRetriever):
             nodes_with_scores.append(NodeWithScore(node=node, score=score))
 
         return nodes_with_scores
+
+if __name__=="__main__":
+    import os
+    os.environ["NO_PROXY"]="localhost"
+    vector_store = MilvusVectorStore(
+        dim=768,
+        collection_name="arxiv_test",
+        uri="http://localhost:19530",
+    )
+    embed_model = InstructorEmbeddings(
+        uri="http://localhost:8081",
+        model_name="BAAI/llm-embedder",
+    )
+
+    print(embed_model._get_query_embedding("What is Retrieval Augment Generation?"))
+
+    retriever = VectorDBRetriever(vector_store=vector_store, embed_model=embed_model)
+    nodes = retriever.retrieve("What is Retrieval Augmented?")
+    print(nodes)

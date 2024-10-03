@@ -30,7 +30,7 @@ Your task involves processing a collection of recent research paper abstracts. P
 try:
     vector_store = MilvusVectorStore(
         dim=768,
-        collection_name="arxiv",
+        collection_name="arxiv_test",
         uri=cfg.get("milvus")["uri"],
     )
 except Exception as e:
@@ -93,6 +93,7 @@ async def start():
     query_engine = RetrieverQueryEngine.from_args(retriever=retriever, llm=llm, response_synthesizer=synth, service_context=service_context)
 
     cl.user_session.set("query_engine", query_engine)
+
 
     # Chat history
     # chat_history_settings = cfg.get("chat_history")
