@@ -7,7 +7,7 @@ from llama_index.core.schema import NodeWithScore
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.core.vector_stores import VectorStoreQuery
 
-from utils.embedder import InstructorEmbeddings
+from arXivRAG.src.core.embedder import InstructorEmbeddings
 
 class VectorDBRetriever(BaseRetriever):
     """Retriever over a postgres vector store."""

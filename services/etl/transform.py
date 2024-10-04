@@ -11,7 +11,7 @@ from llama_index.core import Document
 from minio import Minio
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.embedder import InstructorEmbeddings
+from arXivRAG.src.core.embedder import InstructorEmbeddings
 from configs import cfg
 
 

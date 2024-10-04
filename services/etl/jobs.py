@@ -16,7 +16,7 @@ from data_fetching import DataFetcher
 # Import configs path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs import cfg
-from utils.embedder import InstructorEmbeddings
+from arXivRAG.src.core.embedder import InstructorEmbeddings
 
 if __name__ == "__main__":
     # Define argument parser
