@@ -13,6 +13,8 @@ __pycache__
 *.csv
 *.env
 
+llm-embedder-Q4_K_M-GGUF
+
 ########################### Default .gitignore ###########################
 
 # Byte-compiled / optimized / DLL files
