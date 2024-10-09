@@ -4,6 +4,8 @@
 
 services/etl/model_cache/*
 
+models/
+
 */__pycache__
 */__pycache__/*
 __pycache__

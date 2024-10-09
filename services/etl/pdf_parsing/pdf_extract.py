@@ -11,20 +11,14 @@ import torch
 import numpy as np
 import gc
 
-# from paddleocr import draw_ocr
 from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from ultralytics import YOLO
-# from unimernet.common.config import Config
-# import unimernet.tasks as tasks
-# from unimernet.processors import load_processor
-# from struct_eqtable import build_model
 
 from modules.latex2png import tex2pil, zhtext2pil
 from modules.extract_pdf import load_pdf_fitz
 from modules.layoutlmv3.model_init import Layoutlmv3_Predictor
-# from modules.self_modify import ModifiedPaddleOCR
 from modules.post_process import get_croped_image, latex_rm_whitespace
 
 
@@ -32,28 +26,9 @@ def mfd_model_init(weight):
     mfd_model = YOLO(weight)
     return mfd_model
 
-
-def mfr_model_init(weight_dir, device='cpu'):
-    args = argparse.Namespace(cfg_path="modules/UniMERNet/configs/demo.yaml", options=None)
-    cfg = Config(args)
-    cfg.config.model.pretrained = os.path.join(weight_dir, "pytorch_model.bin")
-    cfg.config.model.model_config.model_name = weight_dir
-    cfg.config.model.tokenizer_config.path = weight_dir
-    task = tasks.setup_task(cfg)
-    model = task.build_model(cfg)
-    model = model.to(device)
-    vis_processor = load_processor('formula_image_eval', cfg.config.datasets.formula_rec_eval.vis_processor.eval)
-    return model, vis_processor
-
 def layout_model_init(weight):
     model = Layoutlmv3_Predictor(weight)
     return model
-
-def tr_model_init(weight, max_time, device='cuda'):
-    tr_model = build_model(weight, max_new_tokens=4096, max_time=max_time)
-    if device == 'cuda':
-        tr_model = tr_model.cuda()
-    return tr_model
 
 class MathDataset(Dataset):
     def __init__(self, image_paths, transform=None):
@@ -99,11 +74,7 @@ if __name__ == '__main__':
     device = model_configs['model_args']['device']
     dpi = model_configs['model_args']['pdf_dpi']
     mfd_model = mfd_model_init(model_configs['model_args']['mfd_weight'])
-    # mfr_model, mfr_vis_processors = mfr_model_init(model_configs['model_args']['mfr_weight'], device=device)
-    # mfr_transform = transforms.Compose([mfr_vis_processors, ])
-    # tr_model = tr_model_init(model_configs['model_args']['tr_weight'], max_time=model_configs['model_args']['table_max_time'], device=device)
     layout_model = layout_model_init(model_configs['model_args']['layout_weight'])
-    # ocr_model = ModifiedPaddleOCR(show_log=True)
     print(now.strftime('%Y-%m-%d %H:%M:%S'))
     print('Model init done!')
     ## ======== model init ========##

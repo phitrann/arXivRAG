@@ -1,0 +1,1275 @@
+RAM-Avatar: Real-time Photo-Realistic Avatar from Monocular Videos with
+Full-body Control
+
+Xiang Deng1, Zerong Zheng2, Yuxiang Zhang1, Jingxiang Sun1, Chao Xu2,
+Xiaodong Yang3, Lizhen Wang1, Yebin Liu1
+1 Department of Automation, Tsinghua University 2NNKosmos Technology 3Li Auto
+
+Abstract
+
+ity of our proposed method, and a real-time live system is
+proposed to further push research into applications. The
+training and testing code will be released for research pur-
+poses.
+
+This paper focuses on advancing the applicability of hu-
+man avatar learning methods by proposing RAM-Avatar,
+which learns a Real-time, photo-realistic Avatar that sup-
+ports full-body control from Monocular videos. To achieve
+this goal, RAM-Avatar leverages two statistical templates
+responsible for modeling the facial expression and hand
+gesture variations, while a sparsely computed dual atten-
+tion module is introduced upon another body template to
+facilitate high-fidelity texture rendering for the torsos and
+limbs. Building on this foundation, we deploy a lightweight
+yet powerful StyleUnet along with a temporal-aware dis-
+criminator to achieve real-time realistic rendering. To en-
+able robust animation for out-of-distribution poses, we pro-
+pose a Motion Distribution Align module to compensate for
+the discrepancies between the training and testing motion
+distribution. Results and extensive experiments conducted
+in various experimental settings demonstrate the superior-
+
+1. Introduction
+
+The automatic learning of animatable, high-quality human
+avatars from videos holds significant value in diverse appli-
+cations, including movie production, human-computer in-
+teraction, and immersive telepresence. Intuitively, an ideal
+human avatar modeling method should exhibit: 1) the abil-
+ity to support real-time, high-resolution, photo-realistic an-
+imation with minimal data capture effort; 2) the capability
+to model not only the torsos and limbs but also achieve fine-
+grained control of the face and hands.
+The ambition to achieve this goal has led to an in-
+tensive exploration of neural radiance fields (NeRF) [45]
+
+for acquiring a 3D neural representation of human avatars
+[5, 21, 23, 38, 39, 49, 57, 66, 68, 69]. These techniques,
+however, typically rely on multi-view data and struggle
+to achieve photo-realistic real-time rendering, which lim-
+its their widespread application. By leveraging the power
+of generative adversarial networks (GANs) [17, 32, 33], re-
+searchers have proposed several effective image-to-image
+translation approaches to reconstruct human avatars from
+monocular videos and achieve photo-realistic rendering
+[31, 51, 72]. Despite their advancements, these methods
+tend to generate blurry results when driven by poses that
+are different from the training ones. Moreover, most meth-
+ods only model the torsos and the limbs and leave the fine-
+grained body parts like the face and hands ignored. The
+lack of attention to these body parts significantly impairs
+their expressive ability and realistic appearance.
+
+proximal to the body template and those further away while
+integrating motion trends to capture temporal variations. To
+facilitate real-time animation, we decouple the dense calcu-
+lations inherent in the attention mechanism [63] into a se-
+ries of sparse operations [26]. In this way, we augment the
+high-level texture information and improve the consistency
+of body feature maps without compromising computational
+efficiency.
+In response to the second shortcoming, we innovate with
+a Motion Distribution Align (MDA) module, which is de-
+signed to transfer out-of-distribution poses to the target
+avatar pose distribution at test time. To implement this mod-
+ule, we employ a two-stage training process. First, a vari-
+ational auto-encoder (VAE) [34] is trained on a large-scale
+pose dataset to establish a robust latent representation of hu-
+man motions. Following this, a conditional decoder [56] is
+trained exclusively on the pose data of the target avatar. The
+MDA module, by conditioning on previous poses, consis-
+tently adjusts the out-of-distribution pose to align with the
+avatar pose distribution, where the robust encoder ensures
+the maintenance of semantic integrity, and the distribution-
+specific decoder ensures the semantic content will be prop-
+erly translated into the target pose distribution. The inte-
+gration of the MDA module thus empowers our system to
+reliably animate out-of-distribution poses while preserving
+the inherent human motion semantics.
+
+To overcome the aforementioned limitations, we in-
+troduce RAM-Avatar, a neural texture [62] based image-
+to-image translation framework which learns Real-time,
+photo-realistic Avatar supports full-body control from
+Monocular videos. RAM-Avatar comprises three essential
+components that collaborate to model the subtle yet impor-
+tant details of the face and hands, achieve high-fidelity tex-
+ture rendering for the torsos and limbs, and improve ani-
+mate robustness and generalization, respectively.
+Firstly, to faithfully reproduce the facial expressions and
+hand gestures, we integrate two sophisticated statistical
+templates: FaceVerse [64] for facial dynamics and MANO
+[53] for hand articulations. Leveraging these, we deploy
+convolutional neural networks to distill characteristic fea-
+tures from the facial expression manifold of FaceVerse. It
+is an optimal strategy since the face has limited shape varia-
+tion and contains many subtle details. Additionally, we find
+that a hand skeleton map indicating the hand key point lo-
+cations is crucial for deriving more photo-realistic and dis-
+tinct finger rendering results. Diverging from prior work
+[31, 51] that adopt a basic U-net architecture for render-
+ing, our method incorporates a more powerful and com-
+putationally efficient variant, Style-Unet [65], which al-
+lows us to achieve superior results by leveraging the rich,
+high-level information present in our input priors. How-
+ever, initial iterations revealed two primary shortcomings: a
+deficiency for temporal inconsistencies and unrealistic ani-
+mations, stemming from ignoring temporal integration and
+misalignment of the body templates; and a limitation in the
+robustness and stability of animation results, bound by the
+scope of training data and thus struggling with poses beyond
+the training distribution.
+
+Compared to existing human avatar approaches, our
+method excels in multiple key aspects, including anima-
+tion speed, visual fidelity, fine-grained controllability and
+robustness. We believe our pipeline and results will serve as
+a catalyst for further research in similar domains. In sum-
+mary, our contributions can be summarized as:
+• A real-time animatable monocular framework that sup-
+ports photo-realistic full-body animation, including body
+poses, hand gestures, and facial expressions.
+• A dual attention module that facilitates stable realistic
+clothed body details by considering the geometric mis-
+alignment of body template and motion trend.
+• A motion distribution alignment module, which bridges
+the domain gap between out-of-distribution poses and
+avatar pose domain to improve robustness.
+
+2. Related Works
+
+Human Avatars
+Reconstructing photo-realistic animat-
+able human avatars is one of the most popular research top-
+ics in computer vision. Benefiting from the high-quality
+data captured by the dense array of cameras, researchers
+have successfully reconstructed fine-grained human avatars
+by fusing observations from dense views [11, 13, 20, 27,
+40, 69, 70]. However, the expensive investment needed for
+construction and operation significantly restrict their appli-
+cation, and researchers have devoted great efforts in reduc-
+ing the number of views needed for reconstructing realistic
+
+To compensate for the first deficiency, our system em-
+beds a dual attention module upon the body feature map
+rasterized from the body template. The dual attention mod-
+ule can be divided into spatial and temporal parts, where the
+key insight is to enhance the differentiation between areas
+
+human avatars. For example, Peng et al. [49] introduce
+a neural blend weight field, which recovers animatable hu-
+man models by combining NeRF and 3D human skeletons.
+Kwon et al. [36] also leverages a 3D body motion prior
+to learn generalizable neural radiance representations. Li et
+al. [39] use a joint-structured pose embeddings to encode
+high-frequency details and improve the representation abil-
+ity of pose embeddings through feature lines, while Zheng
+et al. [78] learn high-quality full-body avatars that can be
+animated and rendered in real-time based on a composi-
+tional representation modeling the hands, face, and body
+with independent implicit fields.
+
+art methods may still generate artifacts or even collapse
+when driven by poses quite different from the training data
+[30, 77, 78]. To overcome this deficiency, a common prac-
+tice is constructing motion graphs [4, 35] based on the train-
+ing sequence. Some methods [7, 8, 25] synthesis human
+videos depending on reconstructed human meshes based on
+multi-view datasets, while [79] split and re-assemble video
+clips to generate a video with gestures matching a target
+speech audio. Zhang et al. [74] combine motion graph with
+local neural radiance fields to ensure the rendering quality.
+However, adopting motion graphs means that the generated
+video is strictly restricted by training pose sequences even
+though existing human avatar modeling methods can gener-
+alize to novel poses that fall in the training pose domain. In
+this work, we propose to transfer driving poses into avatar
+pose space by a motion distribution align module.
+This
+module can faithfully reconstruct the poses that falls into the
+avatar pose domain, and properly adjust out-of-distribution
+poses without losing the motion semantics.
+
+With the rapid development of flexible and powerful
+representations, methods based on monocular videos have
+achieved great progress [12, 14, 19, 29, 30, 41, 68, 72,
+73]. Pioneer works can only generate some reasonable but
+blurred results by decoding images from input pose skele-
+ton [42, 43]. Some methods adopt a parametric body tem-
+plate to improve generalization and robustness[2, 3, 6]. The
+rasterization pipeline and texture map are further replaced
+by neural textures to store more high-level information
+[50, 51, 55]. Temporal constraints have also been proven to
+be essential for generating stable results [9, 31, 72, 80]. To
+overcome the inevitable tracking error of template fitting,
+researchers explore to build animatable full-body avatars di-
+rectly from videos [38, 57–59]. Nevertheless, most of the
+existing monocular human avatar methods fail to achieve
+real-time photo-realistic animation and typically ignore the
+face and hands, which restricts their applications.
+
+3. Method
+
+This section presents RAM-Avatar, a novel method that en-
+ables the learning of high-fidelity full-body avatars from
+monocular videos with real-time animation capabilities.
+The architecture of our system is depicted in Figure 2. We
+begin by presenting a methodology for capturing realistic
+facial and hand details. Building on this foundation, our
+system leverages a lightweight StyleUnet and a time-aware
+discriminator to facilitate photo-realistic real-time render-
+ing. In addition, we introduce a dual attention module de-
+signed to guarantee temporal consistency and enhance the
+image realism of modeled clothed body elements. Lastly,
+we discuss our Motion Distribution Align module, which
+improves the robustness and generalization at test time, and
+outline the training objectives in our work.
+
+Neural Texture
+The core idea of Neural Texture [62]
+is replacing traditional RGB texture maps with learnable
+feature planes, where the rich signal contained in high-
+dimensional neural features serves as a more accurate en-
+coding of appearance than RGB values. Since its proposal,
+neural textures have been adopted in many areas and proved
+its superiority [18, 42, 43, 50, 55]. As for modeling high-
+quality avatars, ANR [51] uses neural texture to account
+for geometric misalignment and pose-dependent surface de-
+formation, while Next3D [60] adopts neural textures as the
+facial deformation representation to achieve photo-realistic
+portrait generation with fine-grained control. Thanks to the
+large-scale dataset of human images and scans, Dinar [61]
+builds realistic animatable avatars from a single reference
+image. In this paper, we propose a dual attention module
+upon the neural texture based feature map, which not only
+compensates for the misalignment of the body template but
+also improves the temporal consistency.
+
+3.1. Achieving Full-body Control
+
+Neural Textures [51, 62] aim to improve the expressive ca-
+pability of traditional texture maps by learning a set of high-
+dimensional feature maps on top of template meshes, which
+can be further interpreted by a neural renderer. Specifically,
+the neural textured feature map is generated by rasterizing
+the mesh to image space according to the standard graphics
+pipeline and texturing it with the high-dimensional neural
+texture. ANR [51] presents a neural texture based method
+to generate high-resolution images by learning a neural tex-
+ture plane on top of coarse body templates and forming a
+deformation-aware body feature map for further rendering.
+However, it ignores the fine-grained body parts including
+facial expressions and hand gestures, which serve as signif-
+icant forms of nonverbal communication and transmit criti-
+cal social cues among humans. To tackle this challenge, we
+leverage FaceVerse [64] to obtain the relevant facial expres-
+
+Domain Adaption
+Enhancing the robustness of the learn-
+ing model against the out-of-distribution data is a challeng-
+ing task [16, 37, 47, 54, 71]. Although significant progress
+has been achieved in human avatar modeling, state-of-the-
+
+sion parameters. Considering the limited variation of facial
+shapes and the requirement of computational efficiency, we
+utilize a convolutional network to extract distinguishing fea-
+tures from the synthesized face mesh, thereby generating
+the t-th face feature map F face
+t
+∈RH×W ×C1. Acknowl-
+edging the intricate and versatile characteristics of finger
+movements, we additionally construct a hand pose feature
+map F hand
+t
+∈RH×W ×C2 by establishing connections be-
+tween key points on the hands, which serves as an auxil-
+iary input condition. Subsequently, we concatenate F hand
+t
+,
+F face
+t
+, along with the neural texture based body feature
+map F body
+t
+∈RH×W ×C3, to form a comprehensive full-
+body feature map F full
+t
+∈RH×W ×C, where C equals to
+C1 + C2 + C3.
+
+anism on top of scene feature maps to capture contextual
+dependencies. Our dual attention module consists of spatial
+and temporal parts, which aim to compensate for the mis-
+alignments associated with the body template and enhance
+the temporal consistency of body feature maps.
+Specifically, rather than simply generating a body fea-
+ture map Ft ∈RH×W ×C3 by rasterizing the body tem-
+plate mesh corresponding to the t-th frame, we pull out-
+wards the vertices in the current mesh along their normal
+directions, and render it into an expanded body feature map
+F e
+t ∈RH×W ×C3. The original body feature map Ft is then
+refined based on the distance and similarity between Ft and
+F e
+t . This refinement process is designed to facilitate net-
+work to distinguish the regions near the template and those
+far away. To ensure computational efficiency, we adopt a
+variant of criss-cross attention [26] as the central attention
+mechanism in our framework, where pixel-level features are
+updated based on features sharing the same row or column.
+
+Given the high-level full-body feature maps, we adopt
+a lightweight Style-Unet [65] architecture to render photo-
+realistic results. More precisely, a 2D generator G is em-
+ployed to interpret feature maps F full
+t
+into RGB images
+G(F full
+t
+). Similar to [9, 10], we concatenate the t-th gen-
+erated image G(F full
+t
+) with adjacent ground truth images
+and feed them into the discriminator. Such a method forces
+the discriminator to determine both the difference in realism
+and temporal coherence between the “real” sequence (Igt
+t−1,
+Igt
+t , Igt
+t+1) and “fake” sequence (Igt
+t−1, G(F full
+t
+), Igt
+t+1).
+In this way, our method enables the generation of high-
+quality, photo-realistic animation results while improving
+temporal consistency across neighboring frames.
+
+Concretely, two convolutional layers with 1 × 1 filters on
+F e
+t and Ft are deployed to get two feature maps, denoted as
+Qt and Kt, each with dimensions RH1×W1×C4. H1, W1,
+and C4 are less than H, W, and C3 for computing efficiency.
+For the sake of brevity, we omit the symbol t in the subse-
+quent equations. For each position u in feature map Q, we
+obtain a vector Qu ∈RC4 and its corresponding vector set
+Ωu ∈R(H1+W1−1)×C4, where vectors in Ωu are derived
+from K and are in the same row or column with position u.
+The correlation degree ai,u is computed as follows:
+
+3.2. Dual Attention Module
+
+Although high-level texture information has been embed-
+ded in neural textures, naively synthesized body feature
+maps based on per-frame neural textures neglects tempo-
+ral dependencies and suffers from the misalignment of the
+body template, leading to unsatisfactory results. To address
+this limitation, we propose a dual attention module. It is
+inspired by [15], which adopts two types of attention mech-
+
+where Ωi,u ∈RC4 represents the i-th element in Ωu, ai,u ∈
+A and A ∈R(H1+W1−1)×H1×W1, and d(i, u) represents
+the distance weight function between the position of Ωi,u
+and position u.
+We then apply another convolutional layer with 1 × 1
+filters on F to get V ∈RH1×W1×C3 for aggregation. Simi-
+
+larly, we obtain a vector Vu ∈RC3 and corresponding vec-
+tor set Φu ∈R(H1+W1−1)×C3, where vectors in Φu come
+from V and share the same row or column with position u.
+The output of the spatial part is calculated as follows:
+
+[48, 52] to train a variational autoencoder [34] on several
+large-scale human motion capture datasets [1, 28, 44, 46].
+To coherently translate the latent pose representation to spe-
+cific distribution, we implement an extra conditional de-
+coder trained on the avatar pose data, which acquires the
+latent representation of the current pose and the former pose
+as input. The robust pose encoder is frozen when training
+along with the conditional decoder to maintain robustness.
+Once deployed, we leverage the combination of the robust
+pose encoder and the distribution-specified pose decoder to
+bridge the gap between the distributions of the training and
+testing pose. In this way, our motion distribution align mod-
+ule inherits the best of both worlds: the robust pose encoder
+is responsible for extracting the intrinsic semantics of hu-
+man motions, while the distribution-specified pose decoder
+transforms these semantics into continuous human motion
+sequences.
+
+where α is learned during the training process, A′ represent
+the softmax version of A, Φi,u ∈RC3 represents the i-th
+element in Φu, and F spa1 ∈RH1×W1×C3 represents the
+result feature map. Note the above procedure is performed
+twice in order to capture more contextual information and
+we adopt a skip connection [22] to improve stability, thus
+generating the feature map F spa ∈RH×W ×C3 of spatial
+part.
+For temporal coherence, we generate an additional fea-
+ture map F tem ∈RH×W ×C3 in an analogy way with Q
+generated from the body feature map of the previous frame.
+Next, we pass F spa and F tem through two separate convo-
+lution layers, after which we perform an element-wise sum-
+mation for feature fusion and obtain the aggregated body
+feature map F body ∈RH×W ×C3. By doing so, we aug-
+ment the pixel-level features with rich contextual informa-
+tion, thereby benefiting the subsequent rendering process.
+
+3.4. Training objectives
+
+We adopt the common GAN loss, L1 loss, and perceptual
+loss with a VGG19 to train the rendering framework. We
+also provide a hand-loss item to regularize the hand regions
+based on perceptual loss.
+
+3.3. Motion Distribution Alignment
+
+Although the above pipeline can render promising photo-
+realistic animation results, it suffers from the domain-shift
+issue: it tends to generate blurry results when the input
+pose deviates significantly from the training pose [30, 74].
+Therefore, the key challenge of this task is how to adjust
+the driven poses to match the training pose domain while
+maintaining semantic meaning, i.e., manipulating the range
+of motion while sustaining the underlying trend.
+
+To overcome this challenge, we propose a motion dis-
+tribution align module to seamlessly transfer the driven
+pose to the avatar pose domain without semantic degrada-
+tion. Specifically, to learn a robust latent pose representa-
+tion to indicate inherent human motion meaning, we follow
+
+As for training the robust variational autoencoder, we
+adopt the Kullback-Leibler loss, reconstruction loss, and
+regularized loss as in [48].
+After that, we train the
+distribution-specified decoder with reconstruction loss.
+
+4. Experiments
+
+4.1. Experimental Settings
+
+Dataset. We evaluate the performance of our method on the
+“HFshirt” sequence from prior work [31], which contains
+12,099 frames for training and 640 frames for testing. We
+also evaluate the model capability for handling large-scale
+rotational movements on the “female-4-sport” sequence
+from People-Snapshot dataset [3], where we leverage 300
+frames for training and 100 frames for testing.
+To as-
+sess the robustness of the model against out-of-distribution
+poses, we further collect a sequence “Male1”, which con-
+tains 2,000 frames for training and 600 frames for testing.
+Note motions in the test set of “Male1” are beyond the scope
+of the training set, and this sequence is shot with natural
+backgrounds to accommodate real scenarios e.g. training
+with limited data.
+
+In this section, we evaluate the performance of our meth-
+ods for learning high-quality human avatars from monoc-
+ular training videos that achieve high-resolution photo-
+realistic rendering in real time according to monocular driv-
+ing videos. We begin by describing the experimental set-
+tings of our evaluation and then make comparisons with
+state-of-the-art methods. Lastly, we assess the influence of
+key components in our framework. Some exemplary results
+are shown in Figure 1 and Figure 5.
+
+Table 1. Novel in-distribution pose animation quantitative com-
+parison against state-of-the-art methods. The red numbers indi-
+cate the best results in different metrics, while the blue numbers
+indicate the sub-optimal results. Best viewed in color.
+
+Comparison baselines. To validate the superiority of our
+RAM-Avatar, we compare with 1) ANR [51], which also
+adopts neural texture to learn a 2D avatar, 2) HFMT [31],
+which adopts recurrent deep neural networks to predict
+plausible motion-dependent shape and appearance from 2D
+keypoints, 3) InstantAvatar [30], which proposes an effi-
+cient neural radiance field variant to reconstruct avatars. We
+reimplement ANR under the guidance of the authors and
+run HFMT and InstantAvatar based on the official codes.
+
+Table 2. Novel large rotation pose animation quantitative compar-
+ison against state-of-the-art methods. Notations in this table have
+the same meanings as those in Table 1.
+
+iImplementation Details. We adopt three statistic templates
+to capture the status of corresponding parts, i.e., SMPL-X
+[48] for the body, FaceVerse [64] for the face, and MANO
+[53] for the hands. We adopt the method in [64, 76] to esti-
+mate the template parameters. We adopt a variant of Style-
+Unet [65] to render 1024 × 1024 resolution images, where
+the original discriminator is replaced by a temporal-aware
+discriminator to improve consistency. We encode the body
+
+template with a neural texture map 1024 × 1024 × 48. For
+the face and hands, we adopt two separate shallow Unets to
+extract characteristic features, resulting in two 1024 × 1024
+× 16 feature maps respectively. The structure of cVAE is a
+variant of Vposer [48].
+
+By utilizing these metrics, we can provide a comprehensive
+assessment of animation quality in our evaluation.
+
+Comparison settings. In our comparative analysis, we con-
+sider three distinct settings. Firstly, we evaluate methods in
+the context of novel in-distribution pose animation, where
+testing poses belong to the same distribution as the train-
+ing poses. Secondly, we assess methods in the scenario
+of novel large rotation pose animation where models are
+driven by novel unseen rotation poses. Lastly, we inves-
+tigate the performance of our method in the case of novel
+out-of-distribution pose animation. In this setting, the mod-
+els are driven by novel unseen poses that do not conform to
+the distribution of training poses. We remove the facial ex-
+pression and hand gesture modeling part in our framework
+and model body only for a fair comparison. The motion
+distribution align module also only activate in novel out-of-
+
+4.2. Results and Comparisons
+
+Evaluation metrics. To evaluate the quality of the gener-
+ated images, we employ a range of widely used metrics, in-
+cluding LPIPS [75], SSIM [67], and FID [24], which assess
+the perceptual distance of neural network features, pixel-
+space structural similarity, and the Fr´echet inception dis-
+tance between two datasets, respectively. Additionally, to
+evaluate the animation quality in videos, we compute and
+report tLPIPS [72] which quantifies temporal plausibility by
+comparing perceptual changes across consecutive frames.
+
+5. Discussion and Conclusion
+
+Limitations Despite achieving better performance com-
+pared to other state-of-the-art human avatar methods and
+supporting real-time animation, the proposed RAM-Avatar
+method has several limitations.
+Firstly, it relies on an
+image-to-image translation system, which is constrained
+by the available training data. Although the motion dis-
+tribution align module enhances robustness by transferring
+the animation pose to the avatar pose domain, the gener-
+ated images may still appear blurry when encountering ex-
+treme poses, e.g. driven by rotation poses while training
+video only captures the front side of the subject. Secondly,
+the system generates rendering results based on parametric
+template tracking, which does not accurately describe body
+poses or facial expressions. As a result, the full-body con-
+trol is imperfect, impacting the overall performance of our
+framework.
+
+distribution pose animation setting.
+
+Evaluation results. The in-distribution comparison results
+are shown in Table 1 and Figure 6. It can be seen that our an-
+imation results own photo-realistic appearance while other
+methods generate a few artifacts. Our method also obtains
+the best performance in all metrics, which demonstrates the
+superiority of our framework in image quality. From Figure
+7 and Table 2, we observe that our method achieves bet-
+ter performance than 2D methods ANR and HFMT. Our
+method also outperforms the 3D method InstantAvatar in
+most metrics and achieves comparable performance in com-
+parison with FID. Note although InstantAvatar performs
+good results when training with 300 frames only, it tends to
+produce average or even blurry results when training with
+a larger dataset (see Figure 6). As for driving by out-of-
+distribution poses in Figure 8, both ANR and InstantAvatar
+fail to render reasonable results, while our method success-
+fully adjusts the range of body motion without changing the
+inherent meaning and avoids collapse. We attribute the im-
+proved robustness of our framework to the special design
+of the motion distribution align module, which effectively
+mitigates the gap between the training and testing pose dis-
+tributions, resulting in improved synthesis quality and ro-
+bustness.
+
+Social Impact Our method enables learning human avatars
+that can be animated by another person, resulting in a threat
+to be used to generate fake videos, which needs to be ad-
+dressed before deploying.
+
+Conclusion This paper introduces RAM-Avatar, a method
+for learning real-time, photo-realistic avatars that supports
+full-body control from monocular videos. Our approach is
+building upon two statistic templates to model the facial ex-
+pressions and hand gestures while leveraging dual attention
+augmented Neural Texture feature maps to model realis-
+tic and consistent body details, followed by a lightweight
+StyleUnet to generate high-quality animation results in real-
+time. To enhance the robustness of our method, we propose
+a motion distribution align module, which transfers the an-
+imation pose to the avatar pose domain while preserving
+semantic meaning. Through comprehensive experiments,
+we demonstrate that our method achieves state-of-the-art
+performance in human avatar learning based on monocu-
+lar videos. We believe our real-time framework will boost
+a wide range of downstream applications, including aug-
+mented reality and virtual reality.
+
+4.3. Ablation Study
+
+After demonstrating the superiority of our method, we con-
+duct an ablation study to evaluate the influence of our key
+components. Specifically, we consider four framework vari-
+ations, i.e., our framework without spatial part in dual at-
+tention module (w/o Spa), our framework without tempo-
+ral part in dual attention module (w/o Tem), our framework
+without hand modeling component (w/o Hand), and our
+framework without face modeling component (w/o Face).
+As shown in Table 3, we can conclude that each component
+contributes to the final quality, where removing the tempo-
+ral part hampers the temporal consistency, and removing the
+spatial part leads to degenerate image quality. In Figure 9,
+ablation studies confirm that each face and hands modeling
+component positively impacts the overall output quality.
+
+Acknowledgements.
+This paper is supported by Na-
+tional Key R&D Program of China (2022YFF0902200), the
+NSFC project No.62125107, the Beijing Municipal Science
+& Technology Z231100005923030.
+
+References
+
+Kim, Jonathan Taylor, et al. Fusion4d: Real-time per-
+formance capture of challenging scenes. ACM Trans-
+actions on Graphics, pages 1–13, 2016. 2
+
+[1] Ijaz Akhter and Michael J Black. Pose-conditioned
+joint angle limits for 3d human pose reconstruction.
+In CVPR, pages 1446–1455, 2015. 5
+[2] Thiemo Alldieck, Marcus Magnor, Weipeng Xu,
+Christian Theobalt, and Gerard Pons-Moll. Detailed
+human avatars from monocular video. In 3DV, pages
+98–109, 2018. 3
+[3] Thiemo Alldieck, Marcus Magnor, Weipeng Xu,
+Christian Theobalt, and Gerard Pons-Moll.
+Video
+based reconstruction of 3d people models. In CVPR,
+pages 8387–8397, 2018. 3, 6
+[4] Okan Arikan and David A Forsyth. Interactive mo-
+tion generation from examples. ACM Transactions on
+Graphics, pages 483–490, 2002. 3
+[5] Timur Bagautdinov, Chenglei Wu, Tomas Simon,
+Fabian
+Prada,
+Takaaki
+Shiratori,
+Shih-En
+Wei,
+Weipeng Xu, Yaser Sheikh, and Jason Saragih.
+Driving-signal aware full-body avatars. ACM Trans-
+actions on Graphics, pages 1–17, 2021. 2
+[6] Andrei Burov, Matthias Nießner, and Justus Thies.
+Dynamic surface function networks for clothed human
+bodies. In ICCV, pages 10754–10764, 2021. 3
+[7] Dan Casas, Marco Volino, John Collomosse, and
+Adrian Hilton. 4d video textures for interactive char-
+acter appearance.
+In Computer Graphics Forum,
+pages 371–380, 2014. 3
+[8] Dan Casas, Christian Richardt, John Collomosse,
+Christian Theobalt, and Adrian Hilton. 4d model flow:
+Precomputed appearance alignment for real-time 4d
+video interpolation.
+In Computer Graphics Forum,
+pages 173–182, 2015. 3
+[9] Caroline Chan, Shiry Ginosar, Tinghui Zhou, and
+Alexei A Efros.
+Everybody dance now.
+In ICCV,
+pages 5933–5942, 2019. 3, 4
+[10] Mengyu Chu, You Xie, Jonas Mayer, Laura Leal-
+Taix´e, and Nils Thuerey.
+Learning temporal coher-
+ence via self-supervision for gan-based video gener-
+ation. ACM Transactions on Graphics, pages 75–85,
+2020. 4
+[11] Alvaro Collet, Ming Chuang, Pat Sweeney, Don
+Gillett, Dennis Evseev, David Calabrese, Hugues
+Hoppe, Adam Kirk, and Steve Sullivan. High-quality
+streamable free-viewpoint video. ACM Transactions
+on Graphics, pages 1–13, 2015. 2
+[12] Zijian Dong, Chen Guo, Jie Song, Xu Chen, Andreas
+Geiger, and Otmar Hilliges. Pina: Learning a person-
+alized implicit neural avatar from a single rgb-d video
+sequence. In CVPR, pages 20470–20480, 2022. 3
+[13] Mingsong Dou, Sameh Khamis, Yury Degtyarev,
+Philip Davidson, Sean Ryan Fanello, Adarsh Kow-
+dle, Sergio Orts Escolano, Christoph Rhemann, David
+
+formance capture of challenging scenes. ACM Trans-
+actions on Graphics, pages 1–13, 2016. 2
+[14] Yao Feng, Jinlong Yang, Marc Pollefeys, Michael J.
+Black, and Timo Bolkart. Capturing and animation
+of body and clothing from monocular video. In SIG-
+GRAPH Asia, pages 1–7, 2022. 3
+[15] Jun Fu, Jing Liu, Haijie Tian, Yong Li, Yongjun Bao,
+Zhiwei Fang, and Hanqing Lu. Dual attention network
+for scene segmentation. In CVPR, pages 3146–3154,
+2019. 4
+[16] Yaroslav Ganin and Victor Lempitsky. Unsupervised
+domain adaptation by backpropagation.
+In ICML,
+pages 1180–1189, 2015. 3
+[17] Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza,
+Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron
+Courville, and Yoshua Bengio. Generative adversarial
+nets. In NIPS, 2014. 2
+[18] Artur Grigorev, Karim Iskakov, Anastasia Ianina, Re-
+nat Bashirov, Ilya Zakharkin, Alexander Vakhitov, and
+Victor Lempitsky. Stylepeople: A generative model of
+fullbody human avatars. In CVPR, pages 5151–5160,
+2021. 3
+[19] Chen Guo, Tianjian Jiang, Xu Chen, Jie Song, and
+Otmar Hilliges. Vid2avatar: 3d avatar reconstruction
+from videos in the wild via self-supervised scene de-
+composition. In CVPR, pages 12858–12868, 2023. 3
+[20] Kaiwen Guo, Peter Lincoln, Philip Davidson, Jay
+Busch, Xueming Yu, Matt Whalen, Geoff Harvey, Ser-
+gio Orts-Escolano, Rohit Pandey, Jason Dourgarian,
+et al. The relightables: Volumetric performance cap-
+ture of humans with realistic relighting. ACM Trans-
+actions on Graphics, pages 1–19, 2019. 2
+[21] Marc
+Habermann,
+Lingjie
+Liu,
+Weipeng
+Xu,
+Michael Zollhoefer, Gerard Pons-Moll, and Christian
+Theobalt. Real-time deep dynamic characters. ACM
+Transactions on Graphics, pages 1–16, 2021. 2
+[22] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian
+Sun. Deep residual learning for image recognition. In
+CVPR, pages 770–778, 2016. 5
+[23] Tong He, Yuanlu Xu, Shunsuke Saito, Stefano Soatto,
+and Tony Tung.
+Arch++: Animation-ready clothed
+human reconstruction revisited.
+In ICCV, pages
+11046–11056, 2021. 2
+[24] Martin Heusel,
+Hubert Ramsauer,
+Thomas Un-
+terthiner, Bernhard Nessler, and Sepp Hochreiter.
+Gans trained by a two time-scale update rule converge
+to a local nash equilibrium. In NIPS, 2017. 7
+[25] Peng Huang, Margara Tejera, John Collomosse, and
+Adrian Hilton. Hybrid skeletal-surface motion graphs
+for character animation from 4d performance capture.
+ACM Transactions on Graphics, pages 1–14, 2015. 3
+
+[14] Yao Feng, Jinlong Yang, Marc Pollefeys, Michael J.
+Black, and Timo Bolkart. Capturing and animation
+of body and clothing from monocular video. In SIG-
+GRAPH Asia, pages 1–7, 2022. 3
+[15] Jun Fu, Jing Liu, Haijie Tian, Yong Li, Yongjun Bao,
+Zhiwei Fang, and Hanqing Lu. Dual attention network
+for scene segmentation. In CVPR, pages 3146–3154,
+2019. 4
+[16] Yaroslav Ganin and Victor Lempitsky. Unsupervised
+domain adaptation by backpropagation.
+In ICML,
+pages 1180–1189, 2015. 3
+[17] Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza,
+Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron
+Courville, and Yoshua Bengio. Generative adversarial
+nets. In NIPS, 2014. 2
+[18] Artur Grigorev, Karim Iskakov, Anastasia Ianina, Re-
+nat Bashirov, Ilya Zakharkin, Alexander Vakhitov, and
+Victor Lempitsky. Stylepeople: A generative model of
+fullbody human avatars. In CVPR, pages 5151–5160,
+2021. 3
+
+[6] Andrei Burov, Matthias Nießner, and Justus Thies.
+Dynamic surface function networks for clothed human
+bodies. In ICCV, pages 10754–10764, 2021. 3
+
+[19] Chen Guo, Tianjian Jiang, Xu Chen, Jie Song, and
+Otmar Hilliges. Vid2avatar: 3d avatar reconstruction
+from videos in the wild via self-supervised scene de-
+composition. In CVPR, pages 12858–12868, 2023. 3
+
+[7] Dan Casas, Marco Volino, John Collomosse, and
+Adrian Hilton. 4d video textures for interactive char-
+acter appearance.
+In Computer Graphics Forum,
+pages 371–380, 2014. 3
+
+[20] Kaiwen Guo, Peter Lincoln, Philip Davidson, Jay
+Busch, Xueming Yu, Matt Whalen, Geoff Harvey, Ser-
+gio Orts-Escolano, Rohit Pandey, Jason Dourgarian,
+et al. The relightables: Volumetric performance cap-
+ture of humans with realistic relighting. ACM Trans-
+actions on Graphics, pages 1–19, 2019. 2
+
+[8] Dan Casas, Christian Richardt, John Collomosse,
+Christian Theobalt, and Adrian Hilton. 4d model flow:
+Precomputed appearance alignment for real-time 4d
+video interpolation.
+In Computer Graphics Forum,
+pages 173–182, 2015. 3
+[9] Caroline Chan, Shiry Ginosar, Tinghui Zhou, and
+Alexei A Efros.
+Everybody dance now.
+In ICCV,
+pages 5933–5942, 2019. 3, 4
+
+[21] Marc
+Habermann,
+Lingjie
+Liu,
+Weipeng
+Xu,
+Michael Zollhoefer, Gerard Pons-Moll, and Christian
+Theobalt. Real-time deep dynamic characters. ACM
+Transactions on Graphics, pages 1–16, 2021. 2
+
+[10] Mengyu Chu, You Xie, Jonas Mayer, Laura Leal-
+Taix´e, and Nils Thuerey.
+Learning temporal coher-
+ence via self-supervision for gan-based video gener-
+ation. ACM Transactions on Graphics, pages 75–85,
+2020. 4
+
+[22] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian
+Sun. Deep residual learning for image recognition. In
+CVPR, pages 770–778, 2016. 5
+[23] Tong He, Yuanlu Xu, Shunsuke Saito, Stefano Soatto,
+and Tony Tung.
+Arch++: Animation-ready clothed
+human reconstruction revisited.
+In ICCV, pages
+11046–11056, 2021. 2
+
+[11] Alvaro Collet, Ming Chuang, Pat Sweeney, Don
+Gillett, Dennis Evseev, David Calabrese, Hugues
+Hoppe, Adam Kirk, and Steve Sullivan. High-quality
+streamable free-viewpoint video. ACM Transactions
+on Graphics, pages 1–13, 2015. 2
+
+[24] Martin Heusel,
+Hubert Ramsauer,
+Thomas Un-
+terthiner, Bernhard Nessler, and Sepp Hochreiter.
+Gans trained by a two time-scale update rule converge
+to a local nash equilibrium. In NIPS, 2017. 7
+[25] Peng Huang, Margara Tejera, John Collomosse, and
+Adrian Hilton. Hybrid skeletal-surface motion graphs
+for character animation from 4d performance capture.
+ACM Transactions on Graphics, pages 1–14, 2015. 3
+
+[13] Mingsong Dou, Sameh Khamis, Yury Degtyarev,
+Philip Davidson, Sean Ryan Fanello, Adarsh Kow-
+dle, Sergio Orts Escolano, Christoph Rhemann, David
+
+[26] Zilong Huang,
+Xinggang Wang,
+Lichao Huang,
+Chang Huang, Yunchao Wei, and Wenyu Liu.
+Cc-
+net: Criss-cross attention for semantic segmentation.
+In ICCV, pages 603–612, 2019. 2, 4
+[27] Mustafa Is¸ık, Martin R¨unz, Markos Georgopoulos,
+Taras Khakhulin, Jonathan Starck, Lourdes Agapito,
+and Matthias Nießner. Humanrf: High-fidelity neural
+radiance fields for humans in motion. ACM Transac-
+tions on Graphics, pages 1–12, 2023. 2
+[28] Catalin Ionescu, Dragos Papava, Vlad Olaru, and Cris-
+tian Sminchisescu. Human3. 6m: Large scale datasets
+and predictive methods for 3d human sensing in natu-
+ral environments. PAMI, pages 1325–1339, 2013. 5
+[29] Boyi Jiang, Yang Hong, Hujun Bao, and Juyong
+Zhang.
+Selfrecon: Self reconstruction your digital
+avatar from monocular video. In CVPR, pages 5605–
+5615, 2022. 3
+[30] Tianjian Jiang, Xu Chen, Jie Song, and Otmar
+Hilliges. Instantavatar: Learning avatars from monoc-
+ular video in 60 seconds.
+In CVPR, pages 16922–
+16932, 2023. 3, 5, 6, 7
+[31] Moritz Kappel, Vladislav Golyanik, Mohamed El-
+gharib, Jann-Ole Henningson, Hans-Peter Seidel, Su-
+sana Castillo, Christian Theobalt, and Marcus Mag-
+nor. High-fidelity neural human motion transfer from
+monocular video. In CVPR, pages 1541–1550, 2021.
+2, 3, 6, 7
+[32] Tero Karras, Samuli Laine, and Timo Aila. A style-
+based generator architecture for generative adversarial
+networks. In CVPR, pages 4396–4405, 2019. 2
+[33] Tero Karras, Samuli Laine, Miika Aittala, Janne Hell-
+sten, Jaakko Lehtinen, and Timo Aila. Analyzing and
+improving the image quality of StyleGAN. In CVPR,
+2020. 2
+[34] Diederik P Kingma and Max Welling. Auto-encoding
+variational bayes. 2014. 2, 5
+[35] Lucas Kovar, Michael Gleicher, and Fr´ed´eric Pighin.
+Motion graphs. In Seminal Graphics Papers: Pushing
+the Boundaries, Volume 2, pages 723–732. 2023. 3
+[36] Youngjoong Kwon, Dahun Kim, Duygu Ceylan, and
+Henry Fuchs. Neural human performer: Learning gen-
+eralizable radiance fields for human performance ren-
+dering. In NIPS, pages 24741–24752, 2021. 3
+[37] Mengxue Li, Yi-Ming Zhai, You-Wei Luo, Peng-Fei
+Ge, and Chuan-Xian Ren.
+Enhanced transport dis-
+tance for unsupervised domain adaptation. In CVPR,
+pages 13936–13944, 2020. 3
+[38] Ruilong
+Li,
+Julian
+Tanke,
+Minh
+Vo,
+Michael
+Zollh¨ofer,
+J¨urgen Gall,
+Angjoo Kanazawa,
+and
+Christoph Lassner.
+Tava: Template-free animatable
+volumetric actors. In ECCV, pages 419–436, 2022. 2,
+3
+
+[39] Zhe Li, Zerong Zheng, Yuxiao Liu, Boyao Zhou, and
+Yebin Liu. Posevocab: Learning joint-structured pose
+embeddings for human avatar modeling.
+In SIG-
+GRAPH, 2023. 2, 3
+[40] Zhe Li, Zerong Zheng, Lizhen Wang, and Yebin
+Liu. Animatable gaussians: Learning pose-dependent
+gaussian maps for high-fidelity human avatar model-
+ing. In CVPR, 2024. 2
+[41] Hongyu Liu, Xintong Han, ChengBin Jin, Huawei
+Wei, Zhe Lin, Faqiang Wang, Haoye Dong, Yib-
+ing Song, Jia Xu, and Qifeng Chen.
+Human mo-
+tionformer: Transferring human motions with vision
+transformers. In ICLR, 2023. 3
+[42] Lingjie
+Liu,
+Weipeng
+Xu,
+Michael
+Zollhoefer,
+Hyeongwoo Kim, Florian Bernard, Marc Habermann,
+Wenping Wang, and Christian Theobalt. Neural ren-
+dering and reenactment of human actor videos. ACM
+Transactions on Graphics, pages 1–14, 2019. 3
+[43] Lingjie Liu, Weipeng Xu, Marc Habermann, Michael
+Zollh¨ofer, Florian Bernard, Hyeongwoo Kim, Wen-
+ping Wang, and Christian Theobalt.
+Neural human
+video rendering by learning dynamic textures and
+rendering-to-video translation.
+IEEE Transactions
+on Visualization and Computer Graphics, pages 1–1,
+2020. 3
+[44] Naureen Mahmood, Nima Ghorbani, Nikolaus F
+Troje, Gerard Pons-Moll, and Michael J Black.
+Amass: Archive of motion capture as surface shapes.
+In ICCV, pages 5442–5451, 2019. 5
+[45] B Mildenhall, PP Srinivasan, M Tancik, JT Barron, R
+Ramamoorthi, and R Ng. Nerf: Representing scenes
+as neural radiance fields for view synthesis. In ECCV,
+2020. 1
+[46] Aron Monszpart, Paul Guerrero, Duygu Ceylan, Ersin
+Yumer, and Niloy J Mitra.
+imapper: interaction-
+guided scene mapping from monocular videos. ACM
+Transactions on Graphics, pages 1–15, 2019. 5
+[47] Pau Panareda Busto and Juergen Gall. Open set do-
+main adaptation. In ICCV, pages 754–763, 2017. 3
+[48] Georgios Pavlakos, Vasileios Choutas, Nima Ghor-
+bani, Timo Bolkart, Ahmed AA Osman, Dimitrios
+Tzionas, and Michael J Black. Expressive body cap-
+ture: 3d hands, face, and body from a single image. In
+CVPR, pages 10975–10985, 2019. 5, 6, 7
+[49] Sida Peng, Junting Dong, Qianqian Wang, Shangzhan
+Zhang, Qing Shuai, Xiaowei Zhou, and Hujun Bao.
+Animatable neural radiance fields for modeling dy-
+namic human bodies. In ICCV, pages 14314–14323,
+2021. 2, 3
+[50] Sergey Prokudin,
+Michael J. Black,
+and Javier
+Romero.
+Smplpix: Neural avatars from 3d human
+models. In WACV, pages 1809–1818, 2021. 3
+
+[39] Zhe Li, Zerong Zheng, Yuxiao Liu, Boyao Zhou, and
+Yebin Liu. Posevocab: Learning joint-structured pose
+embeddings for human avatar modeling.
+In SIG-
+GRAPH, 2023. 2, 3
+
+[26] Zilong Huang,
+Xinggang Wang,
+Lichao Huang,
+Chang Huang, Yunchao Wei, and Wenyu Liu.
+Cc-
+net: Criss-cross attention for semantic segmentation.
+In ICCV, pages 603–612, 2019. 2, 4
+
+[40] Zhe Li, Zerong Zheng, Lizhen Wang, and Yebin
+Liu. Animatable gaussians: Learning pose-dependent
+gaussian maps for high-fidelity human avatar model-
+ing. In CVPR, 2024. 2
+[41] Hongyu Liu, Xintong Han, ChengBin Jin, Huawei
+Wei, Zhe Lin, Faqiang Wang, Haoye Dong, Yib-
+ing Song, Jia Xu, and Qifeng Chen.
+Human mo-
+tionformer: Transferring human motions with vision
+transformers. In ICLR, 2023. 3
+[42] Lingjie
+Liu,
+Weipeng
+Xu,
+Michael
+Zollhoefer,
+Hyeongwoo Kim, Florian Bernard, Marc Habermann,
+Wenping Wang, and Christian Theobalt. Neural ren-
+dering and reenactment of human actor videos. ACM
+Transactions on Graphics, pages 1–14, 2019. 3
+[43] Lingjie Liu, Weipeng Xu, Marc Habermann, Michael
+Zollh¨ofer, Florian Bernard, Hyeongwoo Kim, Wen-
+ping Wang, and Christian Theobalt.
+Neural human
+video rendering by learning dynamic textures and
+rendering-to-video translation.
+IEEE Transactions
+on Visualization and Computer Graphics, pages 1–1,
+2020. 3
+[44] Naureen Mahmood, Nima Ghorbani, Nikolaus F
+Troje, Gerard Pons-Moll, and Michael J Black.
+Amass: Archive of motion capture as surface shapes.
+In ICCV, pages 5442–5451, 2019. 5
+
+[32] Tero Karras, Samuli Laine, and Timo Aila. A style-
+based generator architecture for generative adversarial
+networks. In CVPR, pages 4396–4405, 2019. 2
+
+[45] B Mildenhall, PP Srinivasan, M Tancik, JT Barron, R
+Ramamoorthi, and R Ng. Nerf: Representing scenes
+as neural radiance fields for view synthesis. In ECCV,
+2020. 1
+[46] Aron Monszpart, Paul Guerrero, Duygu Ceylan, Ersin
+Yumer, and Niloy J Mitra.
+imapper: interaction-
+guided scene mapping from monocular videos. ACM
+Transactions on Graphics, pages 1–15, 2019. 5
+[47] Pau Panareda Busto and Juergen Gall. Open set do-
+main adaptation. In ICCV, pages 754–763, 2017. 3
+[48] Georgios Pavlakos, Vasileios Choutas, Nima Ghor-
+bani, Timo Bolkart, Ahmed AA Osman, Dimitrios
+Tzionas, and Michael J Black. Expressive body cap-
+ture: 3d hands, face, and body from a single image. In
+CVPR, pages 10975–10985, 2019. 5, 6, 7
+[49] Sida Peng, Junting Dong, Qianqian Wang, Shangzhan
+Zhang, Qing Shuai, Xiaowei Zhou, and Hujun Bao.
+Animatable neural radiance fields for modeling dy-
+namic human bodies. In ICCV, pages 14314–14323,
+2021. 2, 3
+[50] Sergey Prokudin,
+Michael J. Black,
+and Javier
+Romero.
+Smplpix: Neural avatars from 3d human
+models. In WACV, pages 1809–1818, 2021. 3
+
+[51] Amit Raj, Julian Tanke, James Hays, Minh Vo,
+Carsten Stoll, and Christoph Lassner. Anr: Articu-
+lated neural rendering for virtual avatars. In CVPR,
+pages 3722–3731, 2021. 2, 3, 6, 7
+[52] Davis Rempe, Tolga Birdal, Aaron Hertzmann, Jimei
+Yang, Srinath Sridhar, and Leonidas J Guibas. Humor:
+3d human motion model for robust pose estimation. In
+ICCV, pages 11488–11499, 2021. 5
+[53] Javier Romero, Dimitrios Tzionas, and Michael J.
+Black.
+Embodied hands: Modeling and capturing
+hands and bodies together.
+ACM Transactions on
+Graphics, 2017. 2, 6
+[54] Kuniaki Saito, Shohei Yamamoto, Yoshitaka Ushiku,
+and Tatsuya Harada. Open set domain adaptation by
+backpropagation. In ECCV, pages 153–168, 2018. 3
+[55] Aliaksandra Shysheya,
+Egor Zakharov,
+Kara-Ali
+Aliev, Renat Bashirov, Egor Burkov, Karim Iskakov,
+Aleksei Ivakhnenko, Yury Malkov, Igor Pasechnik,
+Dmitry Ulyanov, et al. Textured neural avatars. In
+CVPR, pages 2387–2397, 2019. 3
+[56] Kihyuk Sohn, Honglak Lee, and Xinchen Yan. Learn-
+ing structured output representation using deep condi-
+tional generative models. In NIPS, 2015. 2
+[57] Shih-Yang Su, Frank Yu, Michael Zollh¨ofer, and
+Helge Rhodin.
+A-nerf: Articulated neural radiance
+fields for learning human shape, appearance, and pose.
+In NIPS, 2021. 2, 3
+[58] Shih-Yang Su, Timur Bagautdinov, and Helge Rhodin.
+Danbo: Disentangled articulated neural body repre-
+sentations via graph neural networks. In ECCV, pages
+107–124, 2022.
+[59] Shih-Yang Su, Timur Bagautdinov, and Helge Rhodin.
+Npc: Neural point characters from video. In ICCV,
+2023. 3
+[60] Jingxiang Sun, Xuan Wang, Lizhen Wang, Xiaoyu
+Li, Yong Zhang, Hongwen Zhang, and Yebin Liu.
+Next3d: Generative neural texture rasterization for 3d-
+aware head avatars. In CVPR, pages 20991–21002,
+2023. 3
+[61] David Svitov, Dmitrii Gudkov, Renat Bashirov, and
+Victor Lempitsky. Dinar: Diffusion inpainting of neu-
+ral textures for one-shot human avatars.
+In ICCV,
+pages 7062–7072, 2023. 3
+[62] Justus
+Thies,
+Michael
+Zollh¨ofer,
+and
+Matthias
+Nießner. Deferred neural rendering: Image synthesis
+using neural textures. Acm Transactions on Graphics,
+pages 1–12, 2019. 2, 3
+[63] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob
+Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz
+Kaiser, and Illia Polosukhin. Attention is all you need.
+In NIPS, 2017. 2
+[64] Lizhen Wang, Zhiyuan Chen, Tao Yu, Chenguang Ma,
+Liang Li, and Yebin Liu. Faceverse: a fine-grained
+
+and detail-controllable 3d face morphable model from
+a hybrid dataset. In CVPR, pages 20333–20342, 2022.
+2, 3, 6
+[65] Lizhen Wang, Xiaochen Zhao, Jingxiang Sun, Yuxi-
+ang Zhang, Hongwen Zhang, Tao Yu, and Yebin Liu.
+Styleavatar: Real-time photo-realistic portrait avatar
+from a single video. In SIGGRAPH, 2023. 2, 4, 6
+[66] Shaofei Wang, Katja Schwarz, Andreas Geiger, and
+Siyu Tang. Arah: Animatable volume rendering of ar-
+ticulated human sdfs. In ECCV, pages 1–19. Springer,
+2022. 2
+[67] Zhou Wang, Alan C Bovik, Hamid R Sheikh, and
+Eero P Simoncelli. Image quality assessment: from
+error visibility to structural similarity. IEEE transac-
+tions on image processing, pages 600–612, 2004. 7
+[68] Chung-Yi Weng, Brian Curless, Pratul P Srinivasan,
+Jonathan T Barron, and Ira Kemelmacher-Shlizerman.
+Humannerf: Free-viewpoint rendering of moving peo-
+ple from monocular video. In CVPR, pages 16210–
+16220, 2022. 2, 3
+[69] Donglai Xiang, Fabian Prada, Timur Bagautdinov,
+Weipeng Xu, Yuan Dong, He Wen, Jessica Hodgins,
+and Chenglei Wu.
+Modeling clothing as a separate
+layer for an animatable human avatar. ACM Transac-
+tions on Graphics, pages 1–15, 2021. 2
+[70] Yuelang Xu, Benwang Chen, Zhe Li, Hongwen
+Zhang, Lizhen Wang, Zerong Zheng, and Yebin Liu.
+Gaussian head avatar: Ultra high-fidelity head avatar
+via dynamic gaussians. In CVPR, 2024. 2
+[71] Zhenhui Ye, Ziyue Jiang, Yi Ren, Jinglin Liu,
+Jinzheng He, and Zhou Zhao. Geneface: Generalized
+and high-fidelity audio-driven 3d talking face synthe-
+sis. In ICLR, 2023. 3
+[72] Jae Shin Yoon, Duygu Ceylan, Tuanfeng Y Wang,
+Jingwan Lu, Jimei Yang, Zhixin Shu, and Hyun Soo
+Park.
+Learning motion-dependent appearance for
+high-fidelity rendering of dynamic humans from a sin-
+gle camera. In CVPR, pages 3407–3417, 2022. 2, 3,
+7
+[73] Zhengming Yu, Wei Cheng, xian Liu, Wayne Wu, and
+Kwan-Yee Lin.
+MonoHuman: Animatable human
+neural field from monocular video. In CVPR, 2023.
+3
+[74] He Zhang, Fan Li, Jianhui Zhao, Chao Tan, Dongming
+Shen, Yebin Liu, and Tao Yu. Controllable free view-
+point video reconstruction based on neural radiance
+fields and motion graphs. IEEE Transactions on Visu-
+alization and Computer Graphics, 2022. 3, 5
+[75] Richard Zhang, Phillip Isola, Alexei A Efros, Eli
+Shechtman, and Oliver Wang. The unreasonable ef-
+fectiveness of deep features as a perceptual metric. In
+CVPR, pages 586–595, 2018. 7
+
+and detail-controllable 3d face morphable model from
+a hybrid dataset. In CVPR, pages 20333–20342, 2022.
+2, 3, 6
+
+[68] Chung-Yi Weng, Brian Curless, Pratul P Srinivasan,
+Jonathan T Barron, and Ira Kemelmacher-Shlizerman.
+Humannerf: Free-viewpoint rendering of moving peo-
+ple from monocular video. In CVPR, pages 16210–
+16220, 2022. 2, 3
+[69] Donglai Xiang, Fabian Prada, Timur Bagautdinov,
+Weipeng Xu, Yuan Dong, He Wen, Jessica Hodgins,
+and Chenglei Wu.
+Modeling clothing as a separate
+layer for an animatable human avatar. ACM Transac-
+tions on Graphics, pages 1–15, 2021. 2
+[70] Yuelang Xu, Benwang Chen, Zhe Li, Hongwen
+Zhang, Lizhen Wang, Zerong Zheng, and Yebin Liu.
+Gaussian head avatar: Ultra high-fidelity head avatar
+via dynamic gaussians. In CVPR, 2024. 2
+[71] Zhenhui Ye, Ziyue Jiang, Yi Ren, Jinglin Liu,
+Jinzheng He, and Zhou Zhao. Geneface: Generalized
+and high-fidelity audio-driven 3d talking face synthe-
+sis. In ICLR, 2023. 3
+[72] Jae Shin Yoon, Duygu Ceylan, Tuanfeng Y Wang,
+Jingwan Lu, Jimei Yang, Zhixin Shu, and Hyun Soo
+Park.
+Learning motion-dependent appearance for
+high-fidelity rendering of dynamic humans from a sin-
+gle camera. In CVPR, pages 3407–3417, 2022. 2, 3,
+7
+[73] Zhengming Yu, Wei Cheng, xian Liu, Wayne Wu, and
+Kwan-Yee Lin.
+MonoHuman: Animatable human
+neural field from monocular video. In CVPR, 2023.
+3
+[74] He Zhang, Fan Li, Jianhui Zhao, Chao Tan, Dongming
+Shen, Yebin Liu, and Tao Yu. Controllable free view-
+point video reconstruction based on neural radiance
+fields and motion graphs. IEEE Transactions on Visu-
+alization and Computer Graphics, 2022. 3, 5
+[75] Richard Zhang, Phillip Isola, Alexei A Efros, Eli
+Shechtman, and Oliver Wang. The unreasonable ef-
+fectiveness of deep features as a perceptual metric. In
+CVPR, pages 586–595, 2018. 7
+
+[76] Yuxiang Zhang, Hongwen Zhang, Liangxiao Hu, Ji-
+ajun Zhang, Hongwei Yi, Shengping Zhang, and
+Yebin Liu. Proxycap: Real-time monocular full-body
+capture in world space via human-centric proxy-to-
+motion learning. In CVPR, 2024. 6
+[77] Zerong Zheng, Han Huang, Tao Yu, Hongwen Zhang,
+Yandong Guo, and Yebin Liu.
+Structured local ra-
+diance fields for human avatar modeling. In CVPR,
+2022. 3
+[78] Zerong Zheng, Xiaochen Zhao, Hongwen Zhang,
+Boning Liu, and Yebin Liu.
+Avatarrex: Real-time
+expressive full-body avatars.
+ACM Transactions on
+Graphics, 2023. 3
+[79] Yang Zhou, Jimei Yang, Dingzeyu Li, Jun Saito,
+Deepali Aneja, and Evangelos Kalogerakis. Audio-
+driven neural gesture reenactment with video motion
+graphs. In CVPR, pages 3418–3428, 2022. 3
+[80] Long Zhuo, Guangcong Wang, Shikai Li, Wayne Wu,
+and Ziwei Liu. Fast-vid2vid: Spatial-temporal com-
+pression for video-to-video synthesis. In ECCV, pages
+289–305, 2022. 3
+
