@@ -88,15 +88,79 @@ def column_boxes(
     # Remove content boxes outside the clip area
     content_boxes = [box for box in content_boxes if clip.intersects(box.rect)]
 
+    # with open('content_boxes.txt', 'w') as f:
+    #     f.write(str(content_boxes))
+    
     # Sort content boxes by y0, then x0
-    content_boxes.sort(key=lambda box: (box.rect.y0, box.rect.x0))
+    # content_boxes.sort(key=lambda box: (box.rect.y0, box.rect.x0))
 
     # Perform post-processing
     content_boxes = join_content_boxes(content_boxes)
     # content_boxes = handle_overlaps(content_boxes)
-    content_boxes = sorted(content_boxes, key=lambda box: (box.rect.y0, box.rect.x0))
+    content_boxes = sort_boxes(content_boxes, page)
+    
+    # content_boxes = [
+    #     ContentBox(pymupdf.Rect(53.70718765258789, 56.563297271728516, 541.8118896484375, 73.83734130859375), CONTENT_TYPES[0]),
+    #     ContentBox(pymupdf.Rect(57.62197494506836, 94.13801574707031, 535.779296875, 166.1094512939453), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(146.0485382080078, 193.51214599609375, 190.6062469482422, 205.16891479492188), CONTENT_TYPES[0]),
+    #     ContentBox(pymupdf.Rect(49.1270637512207, 218.56829833984375, 287.4342041015625, 289.2501525878906), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(48.93668746948242, 289.9808044433594, 287.59381103515625, 480.6813049316406), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(49.43186569213867, 481.39520263671875, 287.3237609863281, 587.3452758789062), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(50.04110336303711, 596.0108032226562, 127.0931396484375, 608.215087890625), CONTENT_TYPES[0]),
+    #     ContentBox(pymupdf.Rect(49.17326354980469, 616.7603149414062, 287.2789001464844, 688.440185546875), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(308.791748046875, 194.527587890625, 545.7149047851562, 217.08059692382812), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(307.817138671875, 220.33657836914062, 546.3914184570312, 398.9355773925781), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(308.36138916015625, 400.6340637207031, 546.3931884765625, 555.3556518554688), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(308.356689453125, 556.9380493164062, 545.85107421875, 688.3251342773438), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(308.46435546875, 690.7161865234375, 545.8331298828125, 713.3115844726562), CONTENT_TYPES[1]),
+    #     ContentBox(pymupdf.Rect(15.702548027038574, 211.5231475830078, 35.39647674560547, 557.5840454101562), CONTENT_TYPES[2]),
+    #     ContentBox(pymupdf.Rect(48.9299430847168, 694.2745361328125, 286.93951416015625, 713.212646484375), CONTENT_TYPES[2])
+    # ]
 
-    return content_boxes
+    return [box.rect for box in content_boxes if box.content_type in ["plain_text", "title"]]
+
+def sort_boxes(boxes: List[ContentBox], page: pymupdf.Page) -> List[ContentBox]:
+    """Sort content boxes for complex layouts, including mixed single and multi-column pages."""
+    
+    # Separate 'abandon' boxes from others
+    abandon_boxes = [box for box in boxes if box.content_type == 'abandon']
+    other_boxes = [box for box in boxes if box.content_type != 'abandon']
+
+    # Determine page width
+    page_width = page.mediabox_size[0]
+
+    # Determine left and right column boundaries
+    # Let's define a column threshold at half of the page width
+    column_threshold = page_width * 0.45
+
+    # Function to determine the 'column' of a box
+    def get_column(box: ContentBox):
+        if box.rect.x0 < column_threshold:
+            return 'left'
+        else:
+            return 'right'
+
+    # Assign column to each box
+    for box in other_boxes:
+        box.column = get_column(box)  # Dynamically adding an attribute
+
+    # Now group boxes by columns
+    left_boxes = [box for box in other_boxes if box.column == 'left']
+    right_boxes = [box for box in other_boxes if box.column == 'right']
+
+    # Sort boxes within each group by y0 (top to bottom)
+    left_boxes.sort(key=lambda box: box.rect.y0)
+    right_boxes.sort(key=lambda box: box.rect.y0)
+
+    # Combine the boxes in reading order
+    # First the full-width boxes
+    sorted_boxes = left_boxes + right_boxes + abandon_boxes
+
+    # Clean up the dynamically added 'column' attribute
+    for box in other_boxes:
+        del box.column
+
+    return sorted_boxes
 
 def join_content_boxes(boxes: List[ContentBox]) -> List[ContentBox]:
     """Join adjacent content boxes of the same type."""
@@ -192,18 +256,23 @@ def adjust_rect(rect_to_adjust: pymupdf.Rect, fixed_rect: pymupdf.Rect) -> pymup
 
 
 TEXT_CONTENT_TYPES = ["title", "plain_text"]
-def visualize_bboxes(input_filename, output_filename, text_filename, footer_margin, header_margin, mfd_model, layout_model):
+def visualize_bboxes(input_filename, output_filename, text_filename, footer_margin, header_margin, img_size, mfd_conf_thres, mfd_iou_thres, mfd_model, layout_model):
     doc = pymupdf.open(input_filename) 
     for page_num, page in enumerate(doc):
         bboxes = column_boxes(
             page,
             footer_margin=footer_margin,
             header_margin=header_margin,
+            img_size=img_size,
+            mfd_conf_thres=mfd_conf_thres,
+            mfd_iou_thres=mfd_iou_thres,
             mfd_model=mfd_model,
             layout_model=layout_model
         )
         
         shape = page.new_shape()
+        mid_x = page.mediabox_size[0] * 0.45
+        shape.draw_rect(pymupdf.Rect(mid_x, 0,mid_x, page.mediabox_size[1]))
         
         for i, bbox in enumerate(bboxes):
             if isinstance(bbox, ContentBox):  # Assuming ContentBox is the correct type
@@ -232,56 +301,98 @@ def visualize_bboxes(input_filename, output_filename, text_filename, footer_marg
         
         shape.finish(width=0.5, color=(1, 0, 0))  # Red line, 0.5 width
         shape.commit()
+        
+        
     
     doc.save(output_filename)
     doc.close()
+    
+    
+
+with open('configs/model_configs.yaml') as f:
+    model_configs = yaml.load(f, Loader=yaml.FullLoader)
+    
+img_size = model_configs['model_args']['img_size']
+mfd_conf_thres = model_configs['model_args']['conf_thres']
+mfd_iou_thres = model_configs['model_args']['iou_thres']
+device = model_configs['model_args']['device']
+dpi = model_configs['model_args']['pdf_dpi']
+
+if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
+    pass 
+else:
+    from huggingface_hub import snapshot_download
+    # Download the Layout model
+    snapshot_download(
+        repo_id="opendatalab/PDF-Extract-Kit",
+        allow_patterns="models/Layout/*",
+        local_dir="models/Layout"
+    )
+
+    # Download the MFD model
+    snapshot_download(
+        repo_id="opendatalab/PDF-Extract-Kit",
+        allow_patterns="models/MFD/*",
+        local_dir="models/MFD"
+    )
+
+mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
+layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_file", type=str, default="output/original_file.pdf", help="Path to the input PDF file")
-    parser.add_argument("--footer_margin", type=int, default=50, help="Footer margin")
-    parser.add_argument("--header_margin", type=int, default=50, help="Header margin")
-    args = parser.parse_args()
-    
-    # Load model configurations
-    with open('configs/model_configs.yaml') as f:
-        model_configs = yaml.load(f, Loader=yaml.FullLoader)
-    
-    if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
-        pass 
-    else:
-        from huggingface_hub import snapshot_download
-        # Download the Layout model
-        snapshot_download(
-            repo_id="opendatalab/PDF-Extract-Kit",
-            allow_patterns="models/Layout/*",
-            local_dir="models/Layout"
-        )
 
-        # Download the MFD model
-        snapshot_download(
-            repo_id="opendatalab/PDF-Extract-Kit",
-            allow_patterns="models/MFD/*",
-            local_dir="models/MFD"
-        )
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--input_file", type=str, default="output/2312.03441v1.pdf", help="Path to the input PDF file")
+#     parser.add_argument("--footer_margin", type=int, default=50, help="Footer margin")
+#     parser.add_argument("--header_margin", type=int, default=50, help="Header margin")
+#     args = parser.parse_args()
+    
+#     # Load model configurations
+#     with open('configs/model_configs.yaml') as f:
+#         model_configs = yaml.load(f, Loader=yaml.FullLoader)
+        
+#     img_size = model_configs['model_args']['img_size']
+#     conf_thres = model_configs['model_args']['conf_thres']
+#     iou_thres = model_configs['model_args']['iou_thres']
+#     device = model_configs['model_args']['device']
+#     dpi = model_configs['model_args']['pdf_dpi']
+    
+#     if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
+#         pass 
+#     else:
+#         from huggingface_hub import snapshot_download
+#         # Download the Layout model
+#         snapshot_download(
+#             repo_id="opendatalab/PDF-Extract-Kit",
+#             allow_patterns="models/Layout/*",
+#             local_dir="models/Layout"
+#         )
 
-    mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
-    layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
+#         # Download the MFD model
+#         snapshot_download(
+#             repo_id="opendatalab/PDF-Extract-Kit",
+#             allow_patterns="models/MFD/*",
+#             local_dir="models/MFD"
+#         )
+
+#     mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
+#     layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
     
-    # Define output file names
-    output_file = args.input_file.replace(".pdf", "-visualized.pdf")
-    text_filename = args.input_file.replace(".pdf", "-textbox.txt")
+#     # Define output file names
+#     output_file = args.input_file.replace(".pdf", "-visualized.pdf")
+#     text_filename = args.input_file.replace(".pdf", "-textbox.txt")
     
-    start = time.time()
-    
-    visualize_bboxes(args.input_file, 
-                     output_file, 
-                     text_filename, 
-                     args.footer_margin, 
-                     args.header_margin, 
-                     mfd_model, 
-                     layout_model)
-    
-    end = time.time()
-    print('Finished! time cost:', int(end-start), 's')
+#     start = time.time()
+#     visualize_bboxes(args.input_file, 
+#                         output_file, 
+#                         text_filename, 
+#                         args.footer_margin, 
+#                         args.header_margin, 
+#                         img_size,
+#                         conf_thres,
+#                         iou_thres,
+#                         mfd_model, 
+#                         layout_model)
+#     end = time.time()
+#     print('Finished! time cost:', int(end-start), 's')
