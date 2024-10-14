@@ -1,7 +1,8 @@
 services:
   mongodb:
     hostname: mongodb
-    image: mongodb/mongodb-community-server:6.0-ubi8 
+    # image: mongodb/mongodb-community-server:6.0-ubi8 
+    image: mongo:7.0.12
     ports:
       - 27017:27017
     healthcheck:
