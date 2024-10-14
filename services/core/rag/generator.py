@@ -7,7 +7,7 @@ from llm import LLMCore
 from prompts import qa_prompt
 from config import settings
 
-class SynthesizerCore:
+class GeneratorCore:
     def __init__(self):
         self.llm = LLMCore(
             uri=settings.LLM_SERVING_URL,
@@ -24,7 +24,7 @@ class SynthesizerCore:
             ),
         )
     
-    async def synthesize(self, query: str, nodes: List[NodeWithScore]) -> str:
+    async def generate(self, query: str, nodes: List[NodeWithScore]) -> str:
         response = await self.synth.asynthesize(query, nodes)
         return response.response_gen
 

@@ -23,7 +23,6 @@ async def start():
 async def main(message: cl.Message):
     msg = cl.Message(content="", author="Assistant")
 
-
     response = requests.post(
         url=f"{settings.RAG_CORE_URL}/query",
         json={

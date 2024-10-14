@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 from retriever import RetrieverCore
-from synthesizer import SynthesizerCore
+from generator import GeneratorCore 
 
 dotenv.load_dotenv()
 
@@ -16,11 +16,11 @@ class LLMInputData(BaseModel):
 class RAGCore:
     def __init__(self) -> None:
         self.retriever = RetrieverCore()
-        self.synthesizer = SynthesizerCore()
+        self.generator = GeneratorCore()
 
     def query(self, query: str):
         nodes = self.retriever.retrieve(query)
-        response = self.synthesizer.synthesize(query=query, nodes=nodes)
+        response = self.generator.generate(query=query, nodes=nodes)
 
         return response
 

@@ -161,6 +161,7 @@ async def retrieve(input_data: InputData):
             similarity_top_k=settings.SIMILARITY_TOP_K
         )
     )
+
     retriever_list.append(
         CustomBM25Retriever(
             minio_client=minio_client,
@@ -183,8 +184,6 @@ async def retrieve(input_data: InputData):
     nodes = reranker.rerank(query=query, nodes=nodes)
 
     return OutputData(nodes=nodes)
-
- 
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8080, host="0.0.0.0")
