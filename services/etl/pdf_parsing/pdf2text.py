@@ -1,16 +1,14 @@
 import argparse
 from datetime import datetime
-import time
 from typing import List, Tuple, Dict
-import yaml
-import os
 
 
-from modules.layoutlmv3.model_init import Layoutlmv3_Predictor
 import numpy as np
 from PIL import Image
 import pymupdf
+
 from ultralytics import YOLO
+from .modules.layoutlmv3.model_init import Layoutlmv3_Predictor
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -306,93 +304,64 @@ def visualize_bboxes(input_filename, output_filename, text_filename, footer_marg
     
     doc.save(output_filename)
     doc.close()
+
+
+if __name__ == "__main__":
+    import os
+    import yaml
+    import time
     
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_file", type=str, default="output/2312.03441v1.pdf", help="Path to the input PDF file")
+    parser.add_argument("--footer_margin", type=int, default=50, help="Footer margin")
+    parser.add_argument("--header_margin", type=int, default=50, help="Header margin")
+    args = parser.parse_args()
     
-
-with open('configs/model_configs.yaml') as f:
-    model_configs = yaml.load(f, Loader=yaml.FullLoader)
-    
-img_size = model_configs['model_args']['img_size']
-mfd_conf_thres = model_configs['model_args']['conf_thres']
-mfd_iou_thres = model_configs['model_args']['iou_thres']
-device = model_configs['model_args']['device']
-dpi = model_configs['model_args']['pdf_dpi']
-
-if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
-    pass 
-else:
-    from huggingface_hub import snapshot_download
-    # Download the Layout model
-    snapshot_download(
-        repo_id="opendatalab/PDF-Extract-Kit",
-        allow_patterns="models/Layout/*",
-        local_dir="models/Layout"
-    )
-
-    # Download the MFD model
-    snapshot_download(
-        repo_id="opendatalab/PDF-Extract-Kit",
-        allow_patterns="models/MFD/*",
-        local_dir="models/MFD"
-    )
-
-mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
-layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
-
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--input_file", type=str, default="output/2312.03441v1.pdf", help="Path to the input PDF file")
-#     parser.add_argument("--footer_margin", type=int, default=50, help="Footer margin")
-#     parser.add_argument("--header_margin", type=int, default=50, help="Header margin")
-#     args = parser.parse_args()
-    
-#     # Load model configurations
-#     with open('configs/model_configs.yaml') as f:
-#         model_configs = yaml.load(f, Loader=yaml.FullLoader)
+    # Load model configurations
+    with open('configs/model_configs.yaml') as f:
+        model_configs = yaml.load(f, Loader=yaml.FullLoader)
         
-#     img_size = model_configs['model_args']['img_size']
-#     conf_thres = model_configs['model_args']['conf_thres']
-#     iou_thres = model_configs['model_args']['iou_thres']
-#     device = model_configs['model_args']['device']
-#     dpi = model_configs['model_args']['pdf_dpi']
+    img_size = model_configs['model_args']['img_size']
+    conf_thres = model_configs['model_args']['conf_thres']
+    iou_thres = model_configs['model_args']['iou_thres']
+    device = model_configs['model_args']['device']
+    dpi = model_configs['model_args']['pdf_dpi']
     
-#     if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
-#         pass 
-#     else:
-#         from huggingface_hub import snapshot_download
-#         # Download the Layout model
-#         snapshot_download(
-#             repo_id="opendatalab/PDF-Extract-Kit",
-#             allow_patterns="models/Layout/*",
-#             local_dir="models/Layout"
-#         )
+    if os.path.exists(model_configs['model_args']['mfd_weight']) and os.path.exists(model_configs['model_args']['layout_weight']):
+        pass 
+    else:
+        from huggingface_hub import snapshot_download
+        # Download the Layout model
+        snapshot_download(
+            repo_id="opendatalab/PDF-Extract-Kit",
+            allow_patterns="models/Layout/*",
+            local_dir="models/Layout"
+        )
 
-#         # Download the MFD model
-#         snapshot_download(
-#             repo_id="opendatalab/PDF-Extract-Kit",
-#             allow_patterns="models/MFD/*",
-#             local_dir="models/MFD"
-#         )
+        # Download the MFD model
+        snapshot_download(
+            repo_id="opendatalab/PDF-Extract-Kit",
+            allow_patterns="models/MFD/*",
+            local_dir="models/MFD"
+        )
 
-#     mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
-#     layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
+    mfd_model = YOLO(model_configs['model_args']['mfd_weight'])
+    layout_model = Layoutlmv3_Predictor(model_configs['model_args']['layout_weight'])
     
-#     # Define output file names
-#     output_file = args.input_file.replace(".pdf", "-visualized.pdf")
-#     text_filename = args.input_file.replace(".pdf", "-textbox.txt")
+    # Define output file names
+    output_file = args.input_file.replace(".pdf", "-visualized.pdf")
+    text_filename = args.input_file.replace(".pdf", "-textbox.txt")
     
-#     start = time.time()
-#     visualize_bboxes(args.input_file, 
-#                         output_file, 
-#                         text_filename, 
-#                         args.footer_margin, 
-#                         args.header_margin, 
-#                         img_size,
-#                         conf_thres,
-#                         iou_thres,
-#                         mfd_model, 
-#                         layout_model)
-#     end = time.time()
-#     print('Finished! time cost:', int(end-start), 's')
+    start = time.time()
+    visualize_bboxes(args.input_file, 
+                        output_file, 
+                        text_filename, 
+                        args.footer_margin, 
+                        args.header_margin, 
+                        img_size,
+                        conf_thres,
+                        iou_thres,
+                        mfd_model, 
+                        layout_model)
+    end = time.time()
+    print('Finished! time cost:', int(end-start), 's')

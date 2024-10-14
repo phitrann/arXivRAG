@@ -30,12 +30,14 @@ import os
 import string
 from binascii import b2a_base64
 import pymupdf
-from utils.get_text_lines import get_raw_lines, is_white
-
-from pdf2text import column_boxes, img_size, mfd_conf_thres, mfd_iou_thres, mfd_model, layout_model
-
-from utils.progress import ProgressBar
 from dataclasses import dataclass
+
+from ultralytics import YOLO
+
+from .modules.layoutlmv3.model_init import Layoutlmv3_Predictor
+from .libs.get_text_lines import get_raw_lines, is_white
+from .libs.progress import ProgressBar
+from .pdf2text import column_boxes
 
 # Characters recognized as bullets when starting a line.
 bullet = tuple(
@@ -44,7 +46,6 @@ bullet = tuple(
 )
 
 GRAPHICS_TEXT = "\n![](%s)\n"
-
 
 class IdentifyHeaders:
     """Compute data for identifying header text.
@@ -240,6 +241,11 @@ def to_markdown(
     doc,
     *,
     pages: list = None,
+    mfd_model: YOLO = None,
+    layout_model: Layoutlmv3_Predictor = None,
+    mfd_conf_thres: float = 0.25,
+    mfd_iou_thres: float = 0.45,
+    img_size: int = 640,
     hdr_info=None,
     write_images=False,
     embed_images=False,
@@ -738,6 +744,9 @@ if __name__ == "__main__":
     except IndexError:
         print(f"Usage:\npython {os.path.basename(__file__)} input.pdf")
         sys.exit()
+        
+    from .utils import load_models_and_params
+    mfd_model, layout_model, mfd_conf_thres, mfd_iou_thres, img_size = load_models_and_params()
 
     t0 = time.perf_counter()  # start a time
 
@@ -762,7 +771,15 @@ if __name__ == "__main__":
             sys.exit(f"Page number(s) {wrong_pages} not in '{doc}'.")
 
     # get the markdown string
-    md_string = to_markdown(doc, pages=pages)
+    md_string = to_markdown(
+        doc, 
+        pages=pages, 
+        mfd_model=mfd_model, 
+        layout_model=layout_model, 
+        mfd_conf_thres=mfd_conf_thres, 
+        mfd_iou_thres=mfd_iou_thres, 
+        img_size=img_size
+    )
 
     # output to a text file with extension ".md"
     outname = doc.name.replace(".pdf", ".md")

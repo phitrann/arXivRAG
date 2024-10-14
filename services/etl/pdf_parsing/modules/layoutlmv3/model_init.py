@@ -99,9 +99,9 @@ class DotDict(dict):
         self[key] = value
         
 class Layoutlmv3_Predictor(object):
-    def __init__(self, weights):
+    def __init__(self, weights, config_file):
         layout_args = {
-            "config_file": "modules/layoutlmv3/layoutlmv3_base_inference.yaml",
+            "config_file": config_file,
             "resume": False,
             "eval_only": False,
             "num_gpus": 1,
