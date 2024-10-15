@@ -5,6 +5,7 @@ import shutil
 import re
 import json
 from io import BytesIO
+from datetime import datetime, timedelta
 from typing import List, Sequence, Iterator, Dict
 
 from minio import Minio
@@ -19,8 +20,8 @@ from llama_index.retrievers.bm25 import BM25Retriever
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pdf_parsing import PDFParser
-from configs import cfg, pdf_parser_cfg
-from utils.embedder import InstructorEmbeddings
+from core.rag.llm import EmbedderCore
+from config import settings
 
 
 class Extractor:
@@ -40,7 +41,6 @@ class Extractor:
             bucket_name=self.doc_bucket, prefix=f"{self.pdf_prefix}/{date}/"
         )
 
-        nodes = []
         for paper_obj in paper_objs:
             paper_path = paper_obj.object_name
             logger.info(f"Processing {paper_path}")
@@ -65,8 +65,7 @@ class Transformer:
     """
     def __init__(
         self,
-        embedder: InstructorEmbeddings,
-        metadata_db: MongoClient,
+        embedder: EmbedderCore,
         pdf_parser: PDFParser,
         chunk_size: int = 256,
         chunk_overlap: int = 30,
@@ -75,7 +74,6 @@ class Transformer:
         self.chunk_overlap = chunk_overlap
         self.embedder = embedder
         self.pdf_parser = pdf_parser
-        self.metadata_db = metadata_db
 
     def bm25_transform(self, nodes: List[BaseNode]):
         logger.info("BM25 Transforming ...")
@@ -85,22 +83,17 @@ class Transformer:
         )
         return bm25_retriever
 
-    def parse_pdf(self, doc_dict: Dict, parse_cfgs: Dict):
+    def parse_pdf(self, doc_dict: Dict):
         # Extract document text and path
         doc_path = doc_dict["path"]
         doc_pdf = doc_dict["pdf"]
 
-        if doc_path in parse_cfgs:
-            doc_cfg = parse_cfgs[doc_path]
-        else:
-            logger.error(f"Can not find {doc_path} configurations")
-
         logger.info(f"Parsing pdf file: {doc_path}")
 
         # Extract text, metadata from PDF
-        texts, metadata = self.pdf_parser.parse_pdf(doc_pdf, doc_cfg)
+        texts= self.pdf_parser.parse_pdf(doc_pdf)
 
-        return texts, metadata
+        return texts
 
     def node_transform(self, doc_dict: Dict) -> List[BaseNode]:
         # Extract document text and path
@@ -160,23 +153,23 @@ class Loader:
         self.vector_store = milvus_vector_store
         self.metadata_db = metadata_db
     
-    def load_metadata(
-        self, file_name: str, metadata: List[Dict]
-    ):
-        """
-        Save metadata to MongoDB
-        """
+    # def load_metadata(
+    #     self, file_name: str, metadata: List[Dict]
+    # ):
+    #     """
+    #     Save metadata to MongoDB
+    #     """
 
-        logger.info(f"Saving Metadata of file {file_name} into MongoDB")
-        # Check if the collection exists
-        if file_name in self.metadata_db.list_collection_names():
-            # Drop the collection if it exists
-            metadata_db[file_name].drop()
+    #     logger.info(f"Saving Metadata of file {file_name} into MongoDB")
+    #     # Check if the collection exists
+    #     if file_name in self.metadata_db.list_collection_names():
+    #         # Drop the collection if it exists
+    #         metadata_db[file_name].drop()
 
-        # Create (or recreate) the collection
-        collection = self.metadata_db[file_name]
+    #     # Create (or recreate) the collection
+    #     collection = self.metadata_db[file_name]
 
-        collection.insert_many(metadata)
+    #     collection.insert_many(metadata)
 
     def load_markdown(
         self, doc_bytes: bytes, file_name: str, bucket_name: str = "parsed-documents"
@@ -295,45 +288,52 @@ class ExtractTransformLoad:
         # 2^3: Load Vector store, 2^4: Load BM25
         self.pipe_flag = pipe_flag
 
-    def process(self, tool: str) -> List[Dict]:
-        logger.info(f"Processing documents of {tool}...")
+    def process(self, start_date: str, end_date: str) -> List[Dict]:
+        logger.info(f"Processing documents of from {start_date} to {end_date}")
 
-        # Extract pdf documents
-        pdf_docs = self.extractor.extract_docs(tool=tool)
+        # Parse string to datetime
+        start_date = datetime.strptime(start_date, "%Y%m%d")
+        end_date = datetime.strptime(end_date, "%Y%m%d")
 
-        tool_nodes = []
-
-        # For each document
-        for item in pdf_docs:
-            # Initialize variables
-
-            if self.pipe_flag & 1:  # 000001
-                texts, metadata = self.transformer.parse_pdf(doc_dict=item, parse_cfgs=pdf_parser_cfg[tool])
-                item["texts"] = texts
-                item["metadata"] = metadata
-                
-                self.loader.load_markdown(doc_bytes=texts.encode("utf-8"), file_name=item["path"])
-                # self.loader.load_metadata(file_name=item["path"], metadata=item["metadata"])
-
-            if self.pipe_flag & 3 == 3:  # 000011
-                # Transform document to nodes
-                nodes = self.transformer.node_transform(doc_dict=item)
-                item["nodes"] = nodes
+        # Generate dates from the start to end date
+        while start_date <= end_date:
+            date = start_date.strftime("%Y%m%d")
             
-            if self.pipe_flag & 7 == 7:  # 000111
-                tool_nodes.extend(nodes)
+            # Extract pdf documents
+            pdf_docs = self.extractor.extract_docs(tool=date)
 
-            if self.pipe_flag & 19 == 19:  # 010011
-                ## Load to Vector Store
-                self.loader.load_nodes(nodes)
+            # For each document
+            for item in pdf_docs:
+                # Initialize variables
 
-        if self.pipe_flag & 7 == 7:  # 000111
-            # Sparse Embedding with BM25
-            bm25_retriever = self.transformer.bm25_transform(
-                nodes=tool_nodes
-            )
-        if self.pipe_flag & 39 == 39:  # 100111
-            self.loader.load_bm25(bm25_retriever=bm25_retriever, tool=tool)
+                if self.pipe_flag & 1:  # 00001
+                    texts = self.transformer.parse_pdf(doc_dict=item)
+                    item["texts"] = texts
+                    
+                    self.loader.load_markdown(doc_bytes=texts.encode("utf-8"), file_name=item["path"])
+                    # self.loader.load_metadata(file_name=item["path"], metadata=item["metadata"])
+
+                if self.pipe_flag & 3 == 3:  # 00011
+                    # Transform document to nodes
+                    nodes = self.transformer.node_transform(doc_dict=item)
+                    item["nodes"] = nodes
+                
+                # if self.pipe_flag & 7 == 7:  # 00111
+                #     tool_nodes.extend(nodes)
+
+                if self.pipe_flag & 11 == 11:  # 01011
+                    ## Load to Vector Store
+                    self.loader.load_nodes(nodes)
+
+            # if self.pipe_flag & 7 == 7:  # 00111
+            #     # Sparse Embedding with BM25
+            #     bm25_retriever = self.transformer.bm25_transform(
+            #         nodes=tool_nodes
+            #     )
+            # if self.pipe_flag & 23 == 23:  # 10111
+            #     self.loader.load_bm25(bm25_retriever=bm25_retriever )
+
+            start_date += timedelta(days=1)
 
         logger.info("ETL pipeline successfully completed")
 
@@ -341,63 +341,53 @@ class ExtractTransformLoad:
 if __name__ == "__main__":
     # -------- Argument Parser ---------
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tool", type=str, help="Tool name to process")
+    parser.add_argument("--start_date", type=str, required=True, help="Start date (yyyymmdd)")
+    parser.add_argument("--end_date", type=str, required=True, help="End date (yyyymmdd)")
     args = parser.parse_args()
 
     # -------- MinIO ---------
-    minio_cfgs = cfg.get("minio")
     minio_client = Minio(
-        endpoint=minio_cfgs["uri"],
-        access_key=minio_cfgs["access_key"],
-        secret_key=minio_cfgs["secret_key"],
+        endpoint=settings.MINIO_URL,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
         secure=False,
+    ) 
+
+     # -------- Embedding ---------
+    # embed_model = OllamaEmbedding(model_name="llm-embedder-q4_k_m", base_url="http://localhost:11434",)
+    embed_model = EmbedderCore(
+        uri=settings.LLM_SERVING_URL
     )
 
-    # -------- Embedder ---------
-    embedding_cfgs = cfg.get("embedding")
-    embedder = InstructorEmbeddings(
-        uri=embedding_cfgs["uri"], model_name=embedding_cfgs["model_name"]
+    vector_store = MilvusVectorStore(
+        dim=settings.EMBEDDING_DIM,
+        collection_name=settings.VECTOR_STORE_COLLECTION,
+        uri=settings.MILVUS_URL
     )
+
 
     # -------- PDF Parser ---------
     pdf_parser = PDFParser()
 
-    # -------- ETL ---------
-    etl_cfgs = cfg.get("etl")
-
-    # -------- MongoDB ---------
-    mongo_cfgs = cfg.get("mongodb")
-    mongo_client = MongoClient(f"mongodb://{mongo_cfgs['username']}:{mongo_cfgs['password']}@{mongo_cfgs['uri']}")
-    metadata_db = mongo_client[etl_cfgs["metadata_database"]]
 
     extractor = Extractor(
         minio_client=minio_client,
     )
 
     transformer = Transformer(
-        embedder=embedder,
-        metadata_db=metadata_db,
+        embedder=embed_model,
         pdf_parser=pdf_parser,
-        chunk_size=etl_cfgs["chunk_size"],
-        chunk_overlap=etl_cfgs["chunk_overlap"],
+        chunk_size=settings.CHUNK_SIZE,
+        chunk_overlap=0,
     )
 
-    milvus_cfgs = cfg.get("milvus")
-
-    milvus_vector_store = MilvusVectorStore(
-        uri=milvus_cfgs["uri"],
-        dim=embedding_cfgs["dim"],
-        collection_name=f"{args.tool.lower()}_{etl_cfgs['chunk_size']}",
-        overwrite=True,
-    )
-
-    loader = Loader(minio_client=minio_client, milvus_vector_store=milvus_vector_store, metadata_db=metadata_db)
+    loader = Loader(minio_client=minio_client, milvus_vector_store=vector_store)
 
     etl_core = ExtractTransformLoad(
         extractor=extractor,
         transformer=transformer,
         loader=loader,
-        pipe_flag=int("111111",base=2)
+        pipe_flag=int("00111",base=2)
     )
 
     etl_core.process(tool=args.tool)

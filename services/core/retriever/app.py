@@ -18,7 +18,7 @@ from llama_index.core.retrievers import QueryFusionRetriever
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import settings
-from rag.llm import InstructorEmbeddings, Reranker
+from rag.llm import EmbedderCore, Reranker
 
 app = FastAPI()
 
@@ -36,7 +36,7 @@ class VectorDBRetriever(BaseRetriever):
     def __init__(
         self,
         vector_store: MilvusVectorStore,
-        embed_model: InstructorEmbeddings,
+        embed_model: EmbedderCore,
         query_mode: str = "default",
         similarity_top_k: int = 5,
     ) -> None:
@@ -136,7 +136,7 @@ async def retrieve(input_data: InputData):
 
     # -------- Embedding ---------
     # embed_model = OllamaEmbedding(model_name="llm-embedder-q4_k_m", base_url="http://localhost:11434",)
-    embed_model = InstructorEmbeddings(
+    embed_model = EmbedderCore(
         uri=settings.LLM_SERVING_URL
     )
 

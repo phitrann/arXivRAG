@@ -52,14 +52,14 @@ def load_models_and_params():
         snapshot_download(
             repo_id="opendatalab/PDF-Extract-Kit",
             allow_patterns="models/Layout/*",
-            local_dir=os.path.join(current_dir, 'models', 'Layout')
+            local_dir=current_dir
         )
 
         # Download the MFD model weights
         snapshot_download(
             repo_id="opendatalab/PDF-Extract-Kit",
             allow_patterns="models/MFD/*",
-            local_dir=os.path.join(current_dir, 'models', 'MFD')
+            local_dir=current_dir
         )
 
     # Load the models with the provided weights

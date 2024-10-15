@@ -108,8 +108,15 @@ class PDFParser:
             raise ValueError("Either file_path or file_data must be provided.")
 
         self.set_pages()
-        self.to_markdown()
-
+        md_string = to_markdown(
+                    self.doc, 
+                    pages=self.pages, 
+                    mfd_model=self.mfd_model, 
+                    layout_model=self.layout_model, 
+                    mfd_conf_thres=self.mfd_conf_thres, 
+                    mfd_iou_thres=self.mfd_iou_thres, 
+                    img_size=self.img_size
+                )
         # if save_to_minio and self.minio_client:
         #     self.save_markdown_to_minio(date, file_path)
         # else:
@@ -117,6 +124,7 @@ class PDFParser:
 
         t1 = time.perf_counter()  # stop timer
         print(f"Markdown creation time for {self.doc.name=} {round(t1-t0, 2)} sec.")
+        return md_string
 
     def parse_bulk_pdfs(self, start_date: str, end_date: str, save_to_minio: bool = False):
         """
@@ -161,7 +169,7 @@ class PDFParser:
                     paper_data = paper.read()  # Read file bytes
 
                     # Parse the PDF
-                    self.parse_pdf(file_data=paper_data, save_to_minio=save_to_minio, date=date)
+                    md_string = self.parse_pdf(file_data=paper_data, save_to_minio=save_to_minio, date=date)
 
                     # Log success with processing time
                     elapsed_time = time.perf_counter() - start_time
@@ -171,7 +179,7 @@ class PDFParser:
                     results.append({
                         'file_path': file_path,
                         'status': 'success',
-                        'md_string': self.md_string,
+                        'md_string': md_string,
                         'error': None,
                         'processing_time': f"{elapsed_time:.2f} seconds"
                     })
