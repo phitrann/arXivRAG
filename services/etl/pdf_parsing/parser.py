@@ -123,7 +123,7 @@ class PDFParser:
         #     self.save_markdown()
 
         t1 = time.perf_counter()  # stop timer
-        print(f"Markdown creation time for {self.doc.name=} {round(t1-t0, 2)} sec.")
+        print(f"Markdown creation time {round(t1-t0, 2)} sec.")
         return md_string
 
     def parse_bulk_pdfs(self, start_date: str, end_date: str, save_to_minio: bool = False):

@@ -33,7 +33,7 @@ class Extractor:
         self.minio_client = minio_client
         self.doc_bucket = "arxiv-papers"
         self.pdf_prefix = "papers"
-        self.metadata_prefix = "metadatas"
+        self.metadata_prefix = "metadata"
 
     def extract_docs(self, date: str) -> Iterator[dict]:
         # Get all objects in the date folder
@@ -46,8 +46,8 @@ class Extractor:
             logger.info(f"Processing {paper_path}")
 
             paper_metadata_obj = self.minio_client.get_object(
-                bucket_name=self.metadata_bucket,
-                object_name=f"{date}/{paper_path.split('/')[-1]}",
+                bucket_name=self.doc_bucket,
+                object_name=f"{self.metadata_prefix}/{date}/{paper_path.split('/')[-1].replace('pdf','json')}",
             )
             paper_metadata = json.load(paper_metadata_obj)
 
@@ -56,7 +56,7 @@ class Extractor:
                 object_name=paper_path
             )
 
-            yield {"metadata": paper_metadata, "pdf": paper_obj.data}
+            yield {"path":paper_path, "metadata": paper_metadata, "pdf": paper_obj.data}
 
 
 class Transformer:
@@ -91,7 +91,7 @@ class Transformer:
         logger.info(f"Parsing pdf file: {doc_path}")
 
         # Extract text, metadata from PDF
-        texts= self.pdf_parser.parse_pdf(doc_pdf)
+        texts= self.pdf_parser.parse_pdf(file_data=doc_pdf)
 
         return texts
 
@@ -147,11 +147,11 @@ class Loader:
         self,
         minio_client: Minio,
         milvus_vector_store: MilvusVectorStore,
-        metadata_db: MongoClient
+        # metadata_db: MongoClient
     ):
         self.minio_client = minio_client
         self.vector_store = milvus_vector_store
-        self.metadata_db = metadata_db
+        # self.metadata_db = metadata_db
     
     # def load_metadata(
     #     self, file_name: str, metadata: List[Dict]
@@ -300,7 +300,7 @@ class ExtractTransformLoad:
             date = start_date.strftime("%Y%m%d")
             
             # Extract pdf documents
-            pdf_docs = self.extractor.extract_docs(tool=date)
+            pdf_docs = self.extractor.extract_docs(date=date)
 
             # For each document
             for item in pdf_docs:
@@ -309,7 +309,7 @@ class ExtractTransformLoad:
                 if self.pipe_flag & 1:  # 00001
                     texts = self.transformer.parse_pdf(doc_dict=item)
                     item["texts"] = texts
-                    
+
                     self.loader.load_markdown(doc_bytes=texts.encode("utf-8"), file_name=item["path"])
                     # self.loader.load_metadata(file_name=item["path"], metadata=item["metadata"])
 
@@ -390,4 +390,4 @@ if __name__ == "__main__":
         pipe_flag=int("00111",base=2)
     )
 
-    etl_core.process(tool=args.tool)
+    etl_core.process(start_date=args.start_date, end_date=args.end_date)
