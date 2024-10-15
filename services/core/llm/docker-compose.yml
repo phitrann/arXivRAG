@@ -1,0 +1,22 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    environment:
+      NO_PROXY: localhost,rag-core,streamlit,${NETWORK_SUBNET}
+      no_proxy: localhost,rag-core,streamlit,${NETWORK_SUBNET}
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/conf.d/nginx.conf.template
+      - ./nginx/run.sh:/run.sh
+    networks:
+      - human-chatbot
+    env_file:
+      - .env
+    entrypoint: /run.sh
+  
+networks:
+  arxivrag_network:
+    name: arxivrag_network
+    external: true 
