@@ -1,17 +1,12 @@
-from threading import Thread
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field
+from typing import List
+from pydantic import BaseModel
 
 import dotenv
 import torch
 import uvicorn
 from loguru import logger
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-from transformers import pipeline
-from transformers import TextIteratorStreamer
-from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
-from FlagEmbedding import FlagLLMReranker
+from transformers import AutoModel, AutoTokenizer
 
 dotenv.load_dotenv()
 app = FastAPI()
@@ -45,25 +40,6 @@ INSTRUCTIONS = {
     },
 }
 
-class LLMInputData(BaseModel):
-    messages: List[Dict[str, str]]
-    generation_params: Dict[str, Any] = Field(
-        default_factory=lambda: {
-            "max_new_tokens": 256,
-            "early_stopping": True,
-        }
-    )
-
-class LLMOutputData(BaseModel):
-    text: str = ""
-
-class RerankInputData(BaseModel):
-    pairs: List[List]
-
-class RerankOutputData(BaseModel):
-    scores: List[float]
-
-
 class EmbInputData(BaseModel):
     query: str = ""
     key: str = ""
@@ -77,34 +53,14 @@ class EmbOutputData(BaseModel):
 # ---------- Init models -------------
 
 def init_model(model_name: str):
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    if model_name == "meta-llama/Meta-Llama-3.1-8B-Instruct":
-        tokenizer.pad_token = tokenizer.eos_token
 
     return model, tokenizer
 
-def init_pipeline(model_name: str):
-    llm_pipe = pipeline(
-        "text-generation",
-        model=model_name,
-        device_map="auto",
-    )
-    
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    return llm_pipe, tokenizer
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-llm_pipe, llm_tokenizer = init_pipeline("meta-llama/Meta-Llama-3.1-8B-Instruct")
-reranker = FlagLLMReranker('BAAI/bge-reranker-v2-gemma', use_fp16=True, device="cuda") # Setting use_fp16 to True speeds up computation with a slight performance degradation
-
-emb_model = AutoModel.from_pretrained("BAAI/llm-embedder")
-emb_tokenizer = AutoTokenizer.from_pretrained("BAAI/llm-embedder")
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+emb_model, emb_tokenizer = init_model("BAAI/llm-embedder")
 emb_model.to(device)
-
-
 
 @app.post("/query_embedding", response_model=EmbOutputData)
 async def query_embedding(input_data: EmbInputData):
@@ -136,42 +92,6 @@ async def key_embeddings(input_data: EmbInputData):
         outputs = emb_model(**inputs)
     return EmbOutputData(embeddings=outputs.last_hidden_state[:, 0].tolist())
 
-@app.post("/rerank", response_model=RerankOutputData)
-async def rerank(input_data: RerankInputData):
-    scores = reranker.compute_score(input_data.pairs, normalize=True) 
-    return RerankOutputData(scores=scores)
-
-@app.post("/stream")
-async def stream_api(input_data: LLMInputData):
-    streamer = TextIteratorStreamer(
-        llm_tokenizer, 
-        skip_prompt=True, 
-        skip_special_tokens=True
-    )
-
-    generation_kwargs = {
-        **input_data.generation_params,
-        "text_inputs": input_data.messages,
-        "streamer": streamer,
-    }
-    
-    thread = Thread(target=llm_pipe, kwargs=generation_kwargs)
-    thread.start()
-    
-    return StreamingResponse(streamer)
-
-@app.post("/generate", response_model=LLMOutputData)
-async def generate(input_data: LLMInputData):
-    generation_kwargs = {
-        **input_data.generation_params,
-        "text_inputs": input_data.messages,
-    }
-    outputs = llm_pipe(
-        **generation_kwargs
-    )
-    response = outputs[0]["generated_text"][-1]
-    
-    return LLMOutputData(text=response)
 
 if __name__ == "__main__":
-    uvicorn.run(app, port=8088, host="0.0.0.0")
+    uvicorn.run(app, port=8000, host="0.0.0.0")
