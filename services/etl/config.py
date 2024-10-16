@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     RAG_CORE_URL: str = Field(default="http://localhost:8800")
 
     # LLM Settings
-    LLM_SERVING_URL: str = Field(default="http://localhost:8088")
+    LLM_SERVING_URL: str = Field(default="http://localhost:8001")
+    EMB_SERVING_URL: str = Field(default="http://localhost:8003")
     MAX_NEW_TOKENS: int = Field(default=512)
 
     # Milvus

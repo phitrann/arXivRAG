@@ -1,5 +1,6 @@
 from typing import List
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
 import dotenv
 import torch
@@ -9,7 +10,7 @@ from fastapi import FastAPI
 from transformers import AutoModel, AutoTokenizer
 
 dotenv.load_dotenv()
-app = FastAPI()
+
 
 # ---------- Input & Output Schemas -------------
 
@@ -58,9 +59,21 @@ def init_model(model_name: str):
 
     return model, tokenizer
 
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-emb_model, emb_tokenizer = init_model("BAAI/llm-embedder")
-emb_model.to(device)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global device, emb_model, emb_tokenizer
+
+    # Initialize models
+    logger.info('Initializing the embedder...')
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    emb_model, emb_tokenizer = init_model("BAAI/llm-embedder")
+    emb_model.to(device)
+
+    # Clean up the model
+    yield
+    del device, emb_model, emb_tokenizer
+
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/query_embedding", response_model=EmbOutputData)
 async def query_embedding(input_data: EmbInputData):
@@ -94,4 +107,4 @@ async def key_embeddings(input_data: EmbInputData):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, port=8000, host="0.0.0.0")
+    uvicorn.run(app, port=8003, host="0.0.0.0")

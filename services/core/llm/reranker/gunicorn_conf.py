@@ -1,5 +1,5 @@
 # Worker Options
-workers = 4
+workers = 2
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_tmp_dir = "/dev/shm" # Use a RAM disk for the worker temporary files
 

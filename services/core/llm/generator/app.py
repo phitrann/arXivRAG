@@ -1,6 +1,7 @@
 from threading import Thread
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
 import dotenv
 import torch
@@ -13,7 +14,6 @@ from transformers import TextIteratorStreamer
 from transformers import  AutoTokenizer
 
 dotenv.load_dotenv()
-app = FastAPI()
 
 # ---------- Input & Output Schemas -------------
 class LLMInputData(BaseModel):
@@ -34,15 +34,29 @@ def init_pipeline(model_name: str):
     llm_pipe = pipeline(
         "text-generation",
         model=model_name,
-        device_map="auto",
+        device="cuda:1",
+        model_kwargs={"torch_dtype": torch.float16},
     )
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     return llm_pipe, tokenizer
 
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
-llm_pipe, llm_tokenizer = init_pipeline("meta-llama/Meta-Llama-3.1-8B-Instruct")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global device, llm_pipe, llm_tokenizer
+
+    # Initialize models
+    logger.info('Initializing the LLM...')
+    device = "cuda:1" if torch.cuda.is_available() else "cpu"
+    llm_pipe, llm_tokenizer = init_pipeline("meta-llama/Meta-Llama-3.1-8B-Instruct")
+
+    # Clean up the model
+    yield
+    del device, llm_pipe, llm_tokenizer 
+
+app = FastAPI(lifespan=lifespan)
+
 
 @app.post("/stream")
 async def stream_api(input_data: LLMInputData):

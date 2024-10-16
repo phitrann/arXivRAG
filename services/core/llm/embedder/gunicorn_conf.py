@@ -4,7 +4,7 @@ worker_class = "uvicorn.workers.UvicornWorker"
 worker_tmp_dir = "/dev/shm" # Use a RAM disk for the worker temporary files
 
 # Address and Port for the workers to bind to
-bind = "0.0.0.0:8000"
+bind = "0.0.0.0:8003"
 
 # Worker timeout
 timeout = 120

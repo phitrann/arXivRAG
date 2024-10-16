@@ -4,6 +4,7 @@ import os
 import shutil
 import re
 import json
+import dotenv
 from io import BytesIO
 from datetime import datetime, timedelta
 from typing import List, Sequence, Iterator, Dict
@@ -23,6 +24,7 @@ from pdf_parsing import PDFParser
 from core.rag.llm import EmbedderCore
 from config import settings
 
+dotenv.load_dotenv()
 
 class Extractor:
     """
@@ -356,7 +358,7 @@ if __name__ == "__main__":
      # -------- Embedding ---------
     # embed_model = OllamaEmbedding(model_name="llm-embedder-q4_k_m", base_url="http://localhost:11434",)
     embed_model = EmbedderCore(
-        uri=settings.LLM_SERVING_URL
+        uri=settings.EMB_SERVING_URL
     )
 
     vector_store = MilvusVectorStore(
