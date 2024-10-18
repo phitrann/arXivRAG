@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu116
+transformers==4.45.2
+torch==1.13.1+cu116
+torchaudio==0.13.1+cu116
+torchvision==0.14.1+cu116
+https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/0.39.1/bitsandbytes-0.39.1-py3-none-any.whl
+# bitsandbytes==0.44.1
+# bitsandbytes-cuda116
+
+

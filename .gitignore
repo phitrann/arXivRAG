@@ -131,4 +131,3 @@ venv.bak/
 *.pkl
 data
 config.json
-notebooks/
