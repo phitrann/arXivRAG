@@ -2,12 +2,13 @@ import os
 import sys
 import shutil
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 import uvicorn
 from fastapi import FastAPI
 from minio import Minio
 from loguru import logger
+from llama_index.core.settings import Settings
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core import QueryBundle
 from llama_index.core.retrievers import BaseRetriever
@@ -18,7 +19,7 @@ from llama_index.core.retrievers import QueryFusionRetriever
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import settings
-from rag.llm import EmbedderCore, Reranker
+from rag.llm import EmbedderCore, RerankerCore
 
 app = FastAPI()
 
@@ -123,26 +124,27 @@ class CustomBM25Retriever(BaseRetriever):
 
 # ---------- API Endpoint -----------
 @app.post("/retrieve", response_model=OutputData)
-async def retrieve(input_data: InputData):
+def retrieve(input_data: InputData):
     query = input_data.query
 
+
     # -------- MinIO ---------
-    minio_client = Minio(
-        endpoint=settings.MINIO_URL,
-        access_key=settings.MINIO_ACCESS_KEY,
-        secret_key=settings.MINIO_SECRET_KEY,
-        secure=False,
-    )
+    # minio_client = Minio(
+    #     endpoint=settings.MINIO_URL,
+    #     access_key=settings.MINIO_ACCESS_KEY,
+    #     secret_key=settings.MINIO_SECRET_KEY,
+    #     secure=False,
+    # )
 
     # -------- Embedding ---------
     # embed_model = OllamaEmbedding(model_name="llm-embedder-q4_k_m", base_url="http://localhost:11434",)
     embed_model = EmbedderCore(
-        uri=settings.LLM_SERVING_URL
+        uri=settings.EMB_SERVING_URL
     )
 
     # -------- Reranker ---------
-    reranker = Reranker(
-        uri=settings.LLM_SERVING_URL, rerank_top_k=settings.RERANK_TOP_K
+    reranker = RerankerCore(
+        uri=settings.RERANK_SERVING_URL, rerank_top_k=settings.RERANK_TOP_K
     )
 
     # -------- Retriever ---------
@@ -162,14 +164,16 @@ async def retrieve(input_data: InputData):
         )
     )
 
-    retriever_list.append(
-        CustomBM25Retriever(
-            minio_client=minio_client,
-            prefix="test",
-            bucket_name="bm25-persistence",
-            similarity_top_k=settings.SIMILARITY_TOP_K,
-        )
-    )
+    # retriever_list.append(
+    #     CustomBM25Retriever(
+    #         minio_client=minio_client,
+    #         prefix="test",
+    #         bucket_name="bm25-persistence",
+    #         similarity_top_k=settings.SIMILARITY_TOP_K,
+    #     )
+    # )
+    Settings.llm = None
+    Settings.embedder = embed_model
 
     retriever = QueryFusionRetriever(
         retriever_list,

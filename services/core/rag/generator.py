@@ -20,11 +20,17 @@ class GeneratorCore:
             llm=self.llm,
             streaming=True,
             text_qa_template=qa_prompt.partial_format(
-                max_num_tokens=int(settings["max_new_tokens"])
+                max_num_tokens=int(settings.MAX_NEW_TOKENS)
             ),
         )
     
-    async def generate(self, query: str, nodes: List[NodeWithScore]) -> str:
-        response = await self.synth.asynthesize(query, nodes)
+    def generate(self, query: str, nodes: List[NodeWithScore]):
+        response = self.synth.synthesize(query, nodes=nodes)
         return response.response_gen
 
+if __name__ == "__main__":
+    generator = GeneratorCore()
+    # stream = generator.generate("Hello world", nodes=[])
+
+    for x in generator.generate("Hello world, What is your name?", nodes=[]):
+        print(x, end="", flush=True)

@@ -130,11 +130,11 @@ class LLMCore(CustomLLM):
     do_sample: bool = True
     request_timeout: int = 30
 
-    # def _stream_wrapper(self, stream_object):
-    #     for chunk in stream_object:
-    #         if chunk:
-    #             text = chunk.decode("utf-8", errors="ignore")
-    #             yield text
+    def _stream_wrapper(self, stream_object):
+        for chunk in stream_object:
+            if chunk:
+                text = chunk.decode("utf-8", errors="ignore")
+                yield text
 
     def callAPI(self, call_type: str, messages: str) -> str:
         logger.info(f"Calling LLM API with type: {call_type}")
@@ -154,7 +154,7 @@ class LLMCore(CustomLLM):
                     stream=True,
                     timeout=self.request_timeout,
                 )
-                stream = response.iter_content(chunk_size=5, decode_unicode=True)
+                stream = self._stream_wrapper(response.iter_content(chunk_size=5))
                 return stream
             except Exception as e:
                 logger.error(f"Error in stream API call: {e}")

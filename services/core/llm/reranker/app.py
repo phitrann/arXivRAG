@@ -34,6 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/rerank", response_model=RerankOutputData)
 async def rerank(input_data: RerankInputData):
+    logger.info(f"Rerank Request: {input_data.pairs}")
     scores = reranker.compute_score(input_data.pairs, normalize=True) 
     return RerankOutputData(scores=scores)
 
