@@ -1,0 +1,4 @@
+ultralytics
+huggingface_hub
+timm
+git+https://github.com/facebookresearch/detectron2.git

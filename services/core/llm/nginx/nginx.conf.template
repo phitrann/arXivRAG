@@ -1,0 +1,37 @@
+server {
+    listen 80;
+    server_name localhost;
+
+    # Forward all requests with path starting with /embedder/ to the embedder service (port 8000)
+    location /embedder/ {
+        rewrite ^/embedder/(.*)$ /$1 break;
+        proxy_pass http://$SERVER_HOST:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Forward all requests with path starting with /llm/ to the llm service (port 8001)
+    location /llm/ {
+        proxy_pass http://$SERVER_HOST:8001;
+        rewrite ^/llm/(.*)$ /$1 break; # Remove the /llm/ prefix from the path before forwarding the request
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Forward all requests with path starting with /re-ranker/ to the re-ranker service (port 8002)
+    location /re-ranker/ {
+        proxy_pass http://$SERVER_HOST:8002;
+        rewrite ^/re-ranker/(.*)$ /$1 break; # Remove the /re-ranker/ prefix from the path before forwarding the request
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # access_log /var/log/nginx/access.log;
+    # error_log /var/log/nginx/error.log;
+}

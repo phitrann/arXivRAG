@@ -4,6 +4,8 @@
 
 services/etl/model_cache/*
 
+models/
+
 */__pycache__
 */__pycache__/*
 __pycache__
@@ -12,6 +14,8 @@ __pycache__
 *.parquet
 *.csv
 *.env
+
+llm-embedder-Q4_K_M-GGUF
 
 ########################### Default .gitignore ###########################
 
@@ -127,3 +131,4 @@ venv.bak/
 *.pkl
 data
 config.json
+notebooks/

@@ -1,0 +1,56 @@
+milvus:
+  # uri: "http://172.16.87.76:19530"
+  uri: "http://localhost:19530"
+
+embedding:
+  # uri: "http://172.16.87.76:8081" 
+  uri: "http://localhost:8081" 
+  model_name: "BAAI/llm-embedder"
+  dim: 768
+
+llm:
+  # uri: "http://172.16.87.76:8088"
+  uri: "http://localhost:8088"
+  model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+  request_timeout: 60.0
+
+mongodb:
+  # uri: "172.16.87.76:27017"
+  uri: "localhost:27017"
+  username: "admin"
+  password: "supersecret"
+
+minio:
+  # uri: "172.16.87.76:9800"
+  uri: "localhost:9800"
+  access_key: "minioadmin"
+  secret_key: "minioadmin"
+
+chat_history:
+  max_history: 10
+  database_name: "chat_history"
+  collection_name: "test_chat"
+
+retriever:
+  similarity_top_k: 2
+
+llm_settings:
+  context_window: 4096
+  max_new_tokens: 256
+  temperature: 0.8
+  top_k: 50
+  top_p: 0.95
+  length_penalty: -0.1
+  repetition_penalty: 1.5
+  num_beams: 3
+  do_sample: true
+
+etl:
+  minio_bucket: "arxiv-papers"
+  minio_pdf_prefix: "papers"
+  minio_json_prefix: "processed_papers"
+  minio_metadata_prefix: "metadata"
+  milvus_collection: "arxiv_test"
+  chunk_size: 256
+  chunk_overlap: 20
+  

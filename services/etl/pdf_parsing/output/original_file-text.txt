@@ -1,0 +1,855 @@
+High-Dimensional Block Diagonal Covariance
+Structure Detection Using Singular Vectors
+
+Jan O. Bauer
+Department of Econometrics and Data Science, Vrije Universiteit Amsterdam,
+Amsterdam, The Netherlands
+
+January 23, 2024
+
+Abstract
+
+The assumption of independent subvectors arises in many aspects of multivariate
+analysis. In most real-world applications, however, we lack prior knowledge about the
+number of subvectors and the specific variables within each subvector. Yet, testing
+all these combinations is not feasible.
+For example, for a data matrix containing
+15 variables, there are already 1 382 958 545 possible combinations. Given that zero
+correlation is a necessary condition for independence, independent subvectors exhibit
+a block diagonal covariance matrix. This paper focuses on the detection of such block
+diagonal covariance structures in high-dimensional data and therefore also identifies
+uncorrelated subvectors.
+Our nonparametric approach exploits the fact that the
+structure of the covariance matrix is mirrored by the structure of its eigenvectors.
+However, the true block diagonal structure is masked by noise in the sample case.
+To address this problem, we propose to use sparse approximations of the sample
+eigenvectors to reveal the sparse structure of the population eigenvectors. Notably,
+the right singular vectors of a data matrix with an overall mean of zero are identical
+to the sample eigenvectors of its covariance matrix. Using sparse approximations
+of these singular vectors instead of the eigenvectors makes the estimation of the
+covariance matrix obsolete. We demonstrate the performance of our method through
+simulations and provide real data examples. Supplementary materials for this article
+are available online.
+
+Keywords: Block diagonal covariance structure; High dimension; Independence test; p > n;
+Singular value decomposition; Variable selection
+
+1
+Introduction
+
+Let Σ be the population covariance matrix of a p-dimensional random vector. Estimating
+and testing the structure of Σ and Σ−1 is important in numerous real-world applications.
+However, in high-dimensional contexts where the number of variables exceeds the number
+of observations, estimating and testing become challenging. Such scenarios arise, for ex-
+ample, in the analysis of DNA microarray gene expressions or in the detection of block
+diagonal structures prior to network inference for Gaussian graphical models (see, e.g., Fan
+and Li (2006), Tan et al. (2015), and related references). Consequently, there is a consid-
+erable interest in testing covariance matrices of high-dimensional data for a block diagonal
+structure. The objectives of these procedures can be categorized into two primary areas:
+
+1. Tests for mutually uncorrelated random variables, specifically, testing for a diagonal
+covariance structure Σ = diag(σ2
+1, . . . , σ2
+p) with unknown but finite positive constants
+σ2
+1, . . . , σ2
+p on the diagonal.
+
+2. Testing for uncorrelated subvectors, i.e., assessing if the covariance matrix exhibits a
+block diagonal structure Σ = diag(Σ1, . . . , Σb).
+
+When testing the hypothesis Σ = diag(σ2
+1, . . . , σ2
+p), Bai et al. (2009) and Jiang and Yang
+(2013) extended classical likelihood ratio tests to the high-dimensional context. Alternative
+methods are based on the distance between the sample covariance matrix and the diagonal
+matrix diag(σ2
+1, . . . , σ2
+p). Contributions in this category include Ledoit and Wolf (2002),
+Birke and Dette (2005), Fisher et al. (2010), and Chen et al. (2010). Furthermore, John-
+stone (2001, 2008) used the distributional properties of the largest eigenvalue of the sample
+covariance matrix to construct hypothesis tests for sphericity. In addition, approaches for
+L2-type test statistics have been explored (see, e.g., Schott (2005) and Leung and Drton
+
+(2018)).
+
+(2018)).
+
+In the context of testing the hypothesis Σ = diag(Σ1, . . . , Σb), Jiang and Yang (2013)
+also extended the likelihood ratio approach for this hypothesis to high-dimensional data,
+and Jiang et al. (2013) proposed a corrected likelihood ratio test and a large-dimensional
+trace criterion. Among others, Srivastava and Reid (2012), Hyodo et al. (2015), Yata and
+Aoshima (2016), and Yamada et al. (2017) used empirical distances between the covariance
+matrix and its block diagonal form to derive test statistics. In addition, Bao et al. (2017)
+extended the Schott type test (Schott, 2005) to test for independence of random vectors, and
+Sz´ekely and Rizzo (2013) provided a test based on an extension of the distance correlation
+(Sz´ekely et al., 2007) to high-dimensional contexts.
+
+In most applications, however, we lack prior knowledge about the number of blocks
+and the specific variables within each block. The number of possible distinct combinations
+of p random variables into different blocks of unknown size can be calculated using the
+Bell number. For example, with p = 15 variables, there are already around 1 382 958 545
+possible combinations. Yet, testing all these combinations in high-dimensional contexts is
+not feasible due to the increasing risk of test errors.
+
+Therefore, methods for detecting block diagonal structures of covariance matrices are
+needed. So far, Pavlenko et al. (2012), Tan et al. (2015), and Devijver and Gallopin (2018)
+have proposed approaches to address this problem. Pavlenko et al. (2012) obtained block
+sparsity by extending the graphical lasso (Friedman et al., 2007) which applies L1 regu-
+larization on the entries of the estimated covariance matrix. Tan et al. (2015) recognized
+that the first step of the graphical lasso involves single linkage hierarchical clustering of the
+variables. However, single linkage clustering can yield suboptimal results in finite-sample
+contexts. To address this limitation, they introduced the cluster graphical lasso, which
+
+uses alternative linkages than single linkage for clustering. Devijver and Gallopin (2018)
+took a different approach. To detect block diagonal structures, they select the best fit-
+ting model from a collection of multivariate distributions with block diagonal covariance
+matrices. This collection of models is generated through hard-thresholding of the sample
+covariance matrix.
+
+In this article, we contribute a novel nonparametric approach for detecting block diag-
+onal structures. We exploit that the structure of the right singular vectors of the mean-
+centered data matrix mirror the block diagonal structure of the covariance matrix. This
+mirroring feature allows us to uncover the structure of the data matrix effectively.
+In
+practice, however, sample noise in the data matrix masks the block diagonal structure,
+consequently masking also the sample singular vectors. We propose employing sparse sin-
+gular vectors, named sparse loadings, to reveal the block diagonal structure. These sparse
+loadings are sparse approximations, i.e., have many zero values, of the sample singular
+vectors and can reflect the inherent structure of the population singular vectors. Their
+computation aligns with lasso-type regression, presenting a convenient pathway for em-
+ploying the Bayesian information criterion to identify sparse loadings that represent the
+structure inherent in the population singular vectors.
+
+The rest of this article is organized as follows: In Section 2, after introducing basic
+notations and definitions, we present the concept for block diagonal covariance matrix
+detection using singular vectors. We provide elaborate simulation studies in Section 3, and
+real data examples in Section 4. Section 5 contains the discussion.
+
+2
+Singular Vectors to Detect Block Diagonal Struc-
+
+ture
+
+2.1
+Preliminaries and Basic Ideas
+
+Let X ≡(x1, . . . , xp) ≡(X1, . . . , Xb) denote an n × p matrix of data. X contains n
+observations, p variables, n×1 column vectors x1, . . . , xp, and is partitioned into b distinct
+submatrices: Xi of dimension n × pi for i ∈{1, . . . , b} where p = p1 + . . . + pb. Each
+Xi is organized such that X1 = (x1, . . . , xp1) contains the first p1 columns of X, X2
+contains the next p2 columns of X, and so forth.
+We assume the convenient ordering
+X ≡(X1, . . . , Xb)⊤since this order can be obtained by using row permutation.
+The
+singular value decomposition (SVD) of the data matrix can be written as follows:
+
+where r ≤min(n, p) is the rank of X, and U = (u1, . . . , un) and V = (v1, . . . , vp) are
+the left and right singular vectors respectively. Without loss of generality, assume that the
+overall mean of X is zero. This implies that the right singular vectors of the data matrix
+are the eigenvectors of the sample covariance matrix.
+
+We assume that the population covariance matrix Σ follows a block diagonal structure:
+
+where Σi is the population covariance matrix corresponding to the submatrix Xi for i ∈
+{1, . . . , b}, and the population covariance between these submatrices is 0. In practice, we
+have only access to the sample covariance matrix of the observed data, which we denote by
+
+S. The sample covariance matrix can be expressed by the population covariance matrix,
+perturbed by a noise matrix E,
+
+which masks the block diagonal structure of Σ.
+
+Assume for now that E = 0 such that S exhibits the block diagonal structure of Σ.
+It holds that the right singular vectors of X mirror the block diagonal structure of the
+covariance matrix:
+
+Corollary 1. S is a block diagonal matrix iff its eigenvectors (the right singular vectors
+of X) exhibit the structure
+
+where Vi are the eigenvectors of Si (the right singular vectors of Xi) for i ∈{1, . . . , b},
+and Pπ is a permutation matrix leading to a block diagonal structure.
+
+Consequently, by analyzing the structure of the singular vectors, it is possible to identify
+the block diagonal pattern of S and thus detect the presence of uncorrelated submatrices.
+
+We saw that the singular vectors exhibit a structure that mirrors the block diagonal
+structure when E = 0. Under more realistic conditions when E ̸= 0, however, the singular
+vectors are also perturbed by E. Let λ1 ≥. . . ≥λp be the sample eigenvalues of S, and
+˜λ1 ≥. . . ≥˜λp be the population eigenvalues with corresponding population eigenvectors
+˜v1, . . . , ˜vp of Σ that perfectly mirror its block diagonal structure. From the Davis-Kahan
+theorem (Yu et al., 2015; Bauer and Drabant, 2021), we can conclude that the distance
+between the population and sample eigenvectors is perturbed. For the purpose of com-
+pleteness, we provide the corresponding result from Yu et al. (2015).
+
+Corollary 2. Let δi ≡min(˜λi−1 −˜λi, ˜λi −˜λi−1) be the eigengap of the eigenvalue ˜λi, where
+˜λ0 = ∞and ˜λp+1 = −∞. If δi > 0 it holds that
+
+for i ∈{1, . . . , p} where ∥· ∥op denotes the operator norm.
+
+In this work, we provide a concept that identifies the block diagonal structure of the
+population covariance matrix using sample singular vectors of the data matrix X also in
+the presence of noise.
+
+2.2
+An Iterative Algorithm
+
+In Corollary 1, we conclude that the singular vectors mirror the block diagonal shape of the
+covariance matrix Σ. In the sample case, however, the block diagonal structure is masked
+by noise. As a result, the sample singular vectors are perturbed by E (Corollary 2) and
+therefore do not perfectly mirror the block diagonal structure of Σ.
+
+To recover their unperturbed structure and thereby reveal the block diagonal structure
+of the population covariance matrix, we propose the use of sparse singular vectors. These
+so called sparse loadings are sparse approximations, i.e., having many zero entries, of the
+sample singular vectors. The intuition of using them is that by calculating sparse loadings,
+the zero elements of the population singular vectors, which may deviate from zero due
+to the perturbation E in their estimated sample counterparts, are reset to their original
+zero values. Calculation of sparse loadings is a well-established area in the literature for
+which numerous approaches have been proposed (see, e.g., Zou et al. (2006), Shen and
+Huang (2008), Witten et al. (2009), Yang et al. (2014), and Gataric et al. (2020) among
+others). These methods typically employ a form of regularization, such as the L1-type
+lasso constraint (Tibshirani, 1996), the hard thresholding penalty (Donoho and Johnstone,
+
+1994), or the smoothly clipped absolute deviation penalty (Fan and Li, 2001). We consider
+the former to obtain sparse loadings according to the following optimization problem:
+
+min
+d,u,v ∥X −duv⊤∥2
+F subject to ∥u∥2
+2 = 1, ∥v∥2
+2 = 1, ∥v∥1 ≤α ,
+
+which calculates the first sparse loading ˇv1 with ∥ˇv1∥2
+2 = 1 and L1 imposing regularization
+parameter α. Throughout this paper, ∥v∥p denotes the Lp norm for any vector v. The
+remaining sparse loadings for i > 1 can then be calculated iteratively. For this the data
+matrix X must be replaced by the residual matrices of the sequential matrix approxima-
+tions.
+
+However, the block diagonal structure can be revealed using only the first singular
+vector. The intuition is that the first singular vector mirrors one block which can then be
+omitted for further analysis. For example, assume without loss of generality that the first
+singular vector mirrors the first submatrix X1. After detection, we can proceed with the
+calculation of the first singular vector of the reduced data matrix X−1 ≡(X2, . . . , Xb),
+omitting the first submatrix X1. This is done iteratively to find all submatrices one after
+the other.
+
+When using sparse loadings in the practical implementation, the precision of block
+detection may be somewhat compromised. The first sparse loading partitions the data
+matrix into two submatrices: one determined by the non-zero loading components and the
+other by the zero-valued loading components. While these submatrices may not directly
+align with the actual population blocks, an recursive refinement process is employed to
+uncover the true underlying block structure. The steps for this recursive refinement are
+outlined in Algorithm 1, which illustrates the method for block detection using singular
+vectors (BD-SVD).
+
+Input n × p data matrix X with centered columns.
+
+1: Calculate the first sparse loading ˇv1 with regularization parameter α.
+
+2: Check if ˇv1 mirrors one or two blocks.
+
+3: Repeat steps 1 to 2 for the respective subsamples corresponding to the blocks detected
+in step 2 until the sparse loading ˇv1 no longer mirrors a more refined block diagonal
+structure.
+This means continuing until the first sparse loading for each subsample
+mirrors only one block, namely the subsample itself.
+
+Output Detected structure X = (X1, . . . , Xb) with subsamples X1, . . . , Xb of the
+data matrix concluding that Σ = diag(Σ1, . . . , Σb) exhibits a block diagonal structure.
+
+2.3
+Parameter Tuning
+
+We treat the regularization α as tuning parameter in step 2 of Algorithm 1 and the sparse
+loading ˇv1 ≡ˇv1(α) depends on the sparsity induced by α. Theoretically, we can increase
+sparsity by increasing α until ˇv1 becomes the standard base vector, suggesting that all
+variable are mutually uncorrelated.
+However, imposing such extreme sparsity may not
+reflect the true underlying structure of the population covariance matrix. Therefore, there
+is a need to control the degree of regularization and strive for a reasonable level of sparsity.
+In this section, we propose an approach for tuning the parameter α.
+
+We formulate the computation of sparse loadings as a lasso regression problem. This
+formulation allows us to utilize the Bayesian information criterion (BIC) (Schwarz, 1978) for
+lasso regression to determine the parameter α that leads to the sparse loading ˇv1 ≡ˇv1(α)
+that best fits the covariance matrix. To begin with, we note that the computation of sparse
+loadings can be stated as a lasso regression problem.
+
+Remark 1. Assume that ∥v∥2
+2 = 1. The optimization problem from (2) can be formulated
+
+as
+
+min
+d,u,v ∥X −duv⊤∥2
+F + λv∥v∥1 ,
+
+where λv ≥0 is a regularization parameter. For a fixed v = ˇv with ∥ˇv∥2
+2 = 1, its minimum
+is
+
+with ˇu = X ˇv.
+
+For the first sparse loading ˇv1, we use the optimization problem outlined above. The unit
+length assumption holds without loss of generality, since we can always replace the sparse
+loading by ˇv1/∥ˇv1∥2
+2 without affecting the sparseness of its structure. When calculating ˇvi
+for i > 1, the data matrix X needs to be replaced by the residual matrices of the sequential
+matrix approximations: X(i) ≡X(i−1) −ˇui−1ˇv⊤
+i−1 where ˇui−1 = X(i−1)ˇvi−1 and X(0) ≡X.
+
+Now, we can adopt the BIC for lasso regression as a selection criteria. Let S ≡supp(ˇv1)
+be the support of the sparse loading ˇv1. We use |S| to denote the cardinality of the set
+S, i.e. , the number of non-zero components in ˇv1. Zou et al. (2007) showed that |S|
+is an unbiased estimate for the degree of freedom of the lasso fit, and propose that the
+BIC can be used to select the optimal number of non-zero coefficients.
+We apply this
+result to our objective of selecting the degree of sparsity by using the connection between
+the calculation of sparse loadings and regularized regression (Remark 1). In addition, we
+consider a high-dimensional BIC (HBIC) which also applies in high-dimensional contexts
+(Wang et al., 2009; Fan and Tang, 2012; Wang et al., 2013).
+
+Remark 2. Let SSR ≡∥X −ˇu1ˇv⊤
+1 ∥2
+F be the sum of squared residuals. The HBIC for the
+first sparse loading ˇv1 according to the lasso regularization problem (3) in Remark 1 is
+
+where anp is a positive sequence of numbers that diverges to infinity.
+
+Wang et al. (2013) showed that if pianp log(p) = o(np) for i ∈{1, . . . , b}, then HBIC
+identifies the true underlying model with probability approaching one under mild condi-
+tions. These conditions are also intended for scenarios in which the number of variables
+exceeds the number of observations in the data matrix, commonly referred to as the ”p > n”
+case. However, the lasso regularization we formulated always addresses a ”p < n” problem
+with nlasso = np observations and plasso = p variables (online Appendix A.3), making it
+easier to meet the HBIC conditions. At the same time, meeting the conditions required for
+other criteria like the extended BIC (Chen and Chen, 2008) is a greater challenge due to
+the constructed ”p < n” case.
+
+For parameter tuning, we compute ˇv1 for |S| ∈{0, . . . , p −1} and select the optimal
+sparse loading with parameter α according to the HBIC in (4).
+The choice of anp =
+log(np)2/3 log log(np) has proven successful in our experience.
+
+2.4
+Illustrative Example
+
+In this section, we provide an illustrative example of BD-SVD. We generated a synthetic
+data matrix X = (x1, . . . , x3000) = (X1, X2, X3) comprising n = 500 observations and
+p = 3000 variables. These variables are partitioned into three equally sized blocks, resulting
+in Xi as 500 × 1000 matrices for i ∈{1, 2, 3}. The sample was drawn from an N(0, Σ)
+distribution with population covariance matrix Σ = diag(Σ1, Σ2, Σ3) with Σi = (1 −
+ωi)I1000 + 2ωi110001⊤
+1000 where ωi is uniformly U(0.1, 0.3) distributed and 11000 is a vector
+of ones.
+
+Figure 1 illustrates the steps of BD-SVD given in Algorithm 1 until all three blocks, and
+therefore the block diagonal structure of the population covariance matrix, are identified.
+
+Figure 1: Illustration of block detection by BD-SVD for the data matrix X = (X1, X2, X3)
+using HBIC from (4) for parameter tuning. In the initial step (left), X is split into two
+blocks: X1 and (X2, X3), where the optimal number of non-zero components is |S| = 2000
+according to HBIC, and S = {1001, . . . , 3000}. With |S| = 1000 in the subsequent step
+(center), (X2, X3) is further split into X2 and X3. The final structure has now been set.
+BD-SVD does not perform any further splits for X1, X2, or X3 (right), since |S| = 0 for
+all three matrices according to HBIC.
+
+For this example and throughout this work, we compute sparse loadings using the method of
+Shen and Huang (2008) in step 1 of Algorithm 1. Shen et al. (2013) established consistency
+of this method in high-dimensional and low sample size contexts. The implementation of
+the method is available in the irlba package (Baglama et al., 2022) within the statistical
+software R (R Core Team, 2022).
+
+2.5
+Number of Sparse Loadings
+
+In Corollary 1, we conclude that the structure of a block diagonal covariance matrix is
+mirrored by all singular vectors. Therefore, it seems valid to choose all singular vectors
+(k = p) to identify the block diagonal structure of the covariance matrix. Further, the
+covariance matrix can be approximated by a reduced number of singular vectors, meaning
+that choosing a smaller number of vectors (k < p) but with k > 1 to achieve a good
+approximation could be a good choice as well. The advantage is that we avoid calculating
+the first sparse loading ˇv1 recursively until the block diagonal structure of the covariance
+is revealed, but rather calculate ˇV = (ˇv1, . . . , ˇvk) with k > 1 that mirrors the true shape
+directly.
+
+We recap (see, e.g., Eckart and Young (1936)) that for any k ≤r
+
+is the best rank-k approximation to S in the sense of the squared Frobenius norm (∥· ∥2
+F).
+If we are able to reveal the block diagonal structure from S using all singular vectors
+(Corollary 1), it is reasonable that this is also possible using k singular vectors of a low
+rank approximation S(k) of S with k < r.
+
+In Remark 1, we recapped calculation of ˇvi for i ≥1. Tuning of the regularization
+parameter α using the HBIC can be done as follows.
+
+i∈{1,...,k} ∥X(i) −ˇuiˇv⊤
+i ∥2
+F and let |Si| be the support of ˇvi such
+Remark 3. Let SSR(k) ≡P
+i∈{1,...,k} |Si| denotes the overall degree of sparsity. The HBIC for the first
+that |S(k)| ≡P
+k sparse loadings according to the lasso regularization problem in Remark 1 is
+
+Singular vectors corresponding to singular values with multiplicity greater than one, or
+those corresponding to singular values that are nearly equal to each other, are strongly
+masked in the sample case (Corollary 2). This poses a challenge in revealing their inher-
+ent structure and argues in favor of not choosing singular vectors corresponding to these
+singular values. With k = 1 however, this concern is less likely to occur. In particular,
+spiked covariance models (Paul, 2007; Johnstone and Lu, 2009) which are frequently used
+to model high-dimensional phenomena, indicate that singular values outside the spikes are
+in close distance, which also argues in favor of not using all singular vectors.
+
+3
+Simulation Studies
+
+In this section, we evaluate the performance of BD-SVD described in Section 2 with k =
+1.
+We simulate a data matrix containing n observations from a p-multivariate normal
+distribution N(0, Σ). BD-SVD is compared to three other approaches:
+
+1. SHDJ and SHRR: In their recent work, Devijver and Gallopin (2018) demonstrated
+that their methods (SHDJ and SHRR) outperformed existing ones. Therefore, these
+methods can be considered to be state of the art and we therefore compare BD-
+SVD to them. The methods are implemented in the R package shock (Devijver and
+Gallopin, 2015).
+
+2. Estτ: An ad hoc method for detecting the block diagonal structure within the co-
+variance matrix involves estimating the sample covariance matrix and applying hard
+thresholding. In this method, all absolute values below a certain threshold τ are set to
+zero. Several high-dimensional covariance matrix estimation methods exist (see, e.g.,
+Bickel and Levina (2008), Rothman et al. (2009), Fan et al. (2013), among others).
+Estimation is performed by generalized thresholding of the covariance matrix (Fan
+and Li, 2001; Rothman et al., 2009) available in the statistical software R by Boileau
+et al. (2021), with τ values chosen from {0.1, 0.2}.
+
+3. SPCA: Principal component analysis is a widely used technique for dimensionality
+reduction and interpretation of a data matrix (James et al., 2021).
+It generates
+principal components v1X, . . . , vpX using the singular vectors v1, . . . , vp, where the
+variance of each principal component is its corresponding eigenvalue λi.
+
+However, interpreting the principal components, which are linear combinations of
+all variables, can be challenging. Sparse principal component analysis (SPCA) over-
+comes this disadvantage by setting some components of the singular vectors to zero,
+which improves interpretability at the price of a lower explained variance. Typically,
+calculation of these sparse loadings is based on solving the optimization problem in
+(2). Notably, the methods mentioned in Section 2.2 to calculate sparse loadings for
+our block detection objective were originally developed in the context of SPCA.
+
+We evaluate the performance using sensitivity (Sensitivity = TP/(TP + FN)), speci-
+ficity (Specificity = TN/(TN + FP)), and the false discovery rate (FDR) (FDR = FP/(TP
++ FP)). Here for i ∈{1, . . . , b}, TP is the number of true positive detection (separating
+Σi from the other blocks), FP is the number of false positive detection (splitting Σi into
+smaller blocks), TN is the number of true negative detection (not splitting Σi into smaller
+
+blocks), and FN is the number of false negative detection (not separating Σi from the other
+blocks)
+
+All simulation results were obtained using the statistical software R 4.2.1 on a compu-
+tational cluster running Rocky Linux 8.
+
+3.1
+Diagonal Covariance Structure
+
+We examine scenarios in which the data matrix consists of mutually uncorrelated variables
+(p = b). Specifically, we consider two cases: (a) Σ = Ip and (b) Σ = diag(σ1, . . . , σp),
+where σi is uniformly U(1, 5) distributed. Across both simulation designs, we use (n, p) ∈
+{(65, 500), (125, 500), (250, 500)}.
+
+Figure 2: Simulation designs (a) and (b): Performance of BD-SVD, SHDJ, and SHRR for
+(n, p) ∈{(65, 500), (125, 500), (250, 500)} measured by Sensitivity.
+
+The results for both simulation designs are illustrated in Figure 2. Since there can be
+no false positive block detection for diagonal matrices, Specificity = 1 and FDR = 0 for
+these designs. Consequently, only the sensitivity is given.
+
+3.2
+Block Diagonal Covariance Structure
+
+In this section, we examine scenarios in which the covariance matrix exhibits a block
+diagonal structure Σ = diag(Σ1, . . . , Σb) with b = 10 blocks Σi of equal sizes. Specifically,
+we consider two cases: (c) each block exhibits a compound symmetric covariance structure
+Σi = (1 −ωi)Ipi + 2ωi1pi1⊤
+pi where ωi is uniformly U(0.1, 0.3) distributed and 1pi is a
+vector of ones, and (d) Σi = M(i) where the components of M(l) = (mij), simulated as
+mij = (−1)i+jω|i−j|0.05
+l
+with ωl ∼U(0.3, 0.5), decrease in magnitude the further they move
+away from the diagonal. Across both simulation designs, we consider (n, p) ∈{(250, 500),
+(500, 500), (500, 2500), (500, 5000)} such that all blocks Σi are of equal size pi = p/b ∈{50,
+250, 500}.
+
+The results for simulation designs (c) and (d) are illustrated in Figure 3 and Figure 4
+respectively. Notably, the comparison of BD-SVD with SHDJ and SHRR was limited to
+cases where p ≤500 due to the long running time of these methods in higher dimensions.
+In fact, the methods did not converge in our simulations when p ≥2500.
+
+BD-SVD outperforms the other methods across the simulation designs.
+It is worth
+noting that the ad hoc procedure shows decent performance, although not reliably across
+all designs. Intuitively, smaller values for τ lead to a higher sensitivity while large vales
+lead to a higher specificity.
+
+Figure 3:
+Simulation design (c):
+Performance of BD-SVD, Est0.1, Est0.2, SHDJ, and
+SHRR for (n, p) ∈{(250, 500), (500, 500)}, and of BD-SVD, Est0.1, and Est0.2 for (n, p) ∈
+{(500, 2500), (500, 5000)} measured by Sensitivity, Specificity, and FDR.
+
+Figure 4:
+Simulation design (d):
+Performance of BD-SVD, Est0.1, Est0.2, SHDJ, and
+SHRR for (n, p) ∈{(250, 500), (500, 500)}, and of BD-SVD, Est0.1, and Est0.2 for (n, p) ∈
+{(500, 2500), (500, 5000)} measured by Sensitivity, Specificity, and FDR.
+
+Table 1: Sensitivity of the first sparse sparse principal component for simulation designs
+(c) and (d) Sparseness for SPCA was increased until the first sparse principal component
+explained at least 90% or 95% of the first principal component without sparseness con-
+straints.
+
+3.3
+A Note on Sparse Principal Component Analysis
+
+Although both BD-SVD and SPCA employ sparse loadings to uncover data structures,
+they differ in their goals. While SPCA aims to identify sparse loadings explaining the
+most variance in the data matrix, BD-SVD targets sparse loadings fitting the population
+covariance matrix. Though their aims may occasionally align, they typically diverge.
+
+To illustrate this, we ran SPCA on simulation design (c) and (d) with n = 500, p = 500,
+and b = 10 such that pi = 50. Simplifying the process, we computed only the first SPCA
+loading. To determine the suitable sparseness for SPCA, we increased sparsity until the first
+sparse principal component explained at least 90% or 95% of the first principal component
+without sparseness constraints, a common practice in SPCA (Zou et al., 2006; Shen and
+Huang, 2008).
+
+Table 1 contains the sensitivity analysis of the simulation study, indicating that SCPA
+is less effective than BD-SVD. It is important to emphasize that the study only evaluates
+whether the first sparse principal component reflects the block diagonal structure.
+To
+
+reveal the entire structure, SPCA must be continued iteratively for the detected blocks,
+which leads to a further decrease in sensitivity.
+Additionally, in this simulation study,
+we calculated the explained variance with respect to the known population eigenvalue.
+However, in high-dimensional contexts, estimating the eigenvalue poses challenges (see,
+e.g., Johnstone (2001), Baik and Silverstein (2006), and Paul (2007), among others), which
+impacts the performance of SPCA.
+
+4
+Real Data Examples
+
+4.1
+Lung Cancer Data
+
+In this section, we illustrate BD-SVD using microarray gene expression signatures. Specifi-
+cally, we analyze a lung cancer gene expression data set that consists of 203 patient samples
+comprising 139 lung adenocarcinomas, 21 squamous cell carcinoma cases, 20 pulmonary
+carcinoid tumors, 6 small cell lung cancers, and 17 normal lung samples. The data and
+additional details can be found online in the supporting information section of the article
+by Bhattacharjee et al. (2001).
+
+The original data set contains 12 600 gene expressions measured using the Affymetrix
+95av2 GeneChip. Following procedures similar to Liu et al. (2008) and Rothman et al.
+(2009), we filter the genes using the ratio of the sample standard deviation and sample
+mean of each gene. We keep the 600 genes with the highest ratio and the 600 genes with
+the lowest ratio, and refer to them as high-ratio genes and low-ratio genes respectively.
+We then standardize the remaining genes so that each gene has a sample mean of 0 and a
+sample standard deviation of 1. After gene filtering, the data set contains n = 203 patients
+with p = 1200 genes.
+
+Figure 5: Sample covariance matrix with absolute values for the standardized gene expres-
+sions of the lung cancer data in its original data-ordering (left) and after reordering the
+variables based on the detected blocks Σ1, . . . , Σ217 (right).
+
+The left plot in Figure 5 illustrates the sample covariance matrix of this subsample.
+We use absolute values of the estimated correlation coefficients because we are interested
+in the strength of the pairwise association between the genes, regardless of their sign. BD-
+SVD identifies 217 blocks Σ1, . . . , Σ217 with varying block sizes p1 = 530, p2 = 104, and
+pi ≤3 for i ∈{3, . . . , 217}. Figure 5 (right) illustrates the sample covariance matrix after
+permuting variables according to the identified blocks.
+
+A visual analysis of the first 600 variables in the left-hand plot, which correspond to
+the high-ratio genes, initially suggests a strong correlation structure, with little correlation
+between the low-ratio genes. However, BD-SVD detects a more refined structure. For
+example, the two largest blocks Σ1 and Σ2 contain a total of p1 + p2 = 634 variables.
+Notably, 97.55% of the variables in Σ1 and 81.55% of the variables in Σ2 are high-ratio
+genes. On the other hand, 13.83% of the variables contained in the remaining blocks Σi
+with i ∈{3, . . . , 217}, i.e., all blocks except Σ1 and Σ2, are high-ratio genes. Thus, not all
+high-ratio genes are correlated with each other: Some high-ratio genes show no correlation
+
+with other high-ratio genes, while there are also cases in which low-ratio genes correlate
+with high-ratio genes.
+
+4.2
+Daily Stock Returns
+
+In this section, we consider cross-sectional correlation of daily stock returns from various
+sectors from the S&P 500, including mining, quarrying, and oil and gas extraction sector;
+utilities sector; wholesale trade sector; retail trade sector; transportation and warehousing
+sector; information sector; finance and insurance sector; real estate and rental and leasing
+sector; professional, scientific, and technical services sector; administrative and support and
+waste management and remediation services sector; and arts, entertainment, and recreation
+sector. The data comes from the Center for Research in Security Prices and is available
+through Wharton Research Data Services. It consists of closing prices or bid/ask averages
+of 278 stocks on the trading days in the last quarter of 2022, which ranges from October
+1, 2022 to December 31, 2022, encompassing a total of 63 days. Consequently, the data
+matrix consists of n = 63 observations and p = 278 variables.
+
+We prepare the data matrix by standardizing it prior to our analysis. BD-SVD detects
+five blocks Σ1, . . . , Σ5 with p1 = 203, p2 = 41, p3 = 27, p4 = 5, and p5 = 2.
+The
+sample covariance matrix, with variables permuted according to our findings, is illustrated
+in Figure 6. We use the absolute values of the estimated correlation coefficients for the
+reasons explained in the previous example.
+
+5
+Discussion
+
+In this paper, we present a nonparametric method for detecting block diagonal structures in
+covariance matrices within high-dimensional data. Our approach relies on the first sparse
+
+Figure 6: Sample covariance matrix with absolute values for the standardized daily stock
+returns data in its original data-ordering (left) and after reordering the variables based on
+the detected blocks Σ1, . . . , Σ5 (right).
+
+loading (k = 1) to mirror the underlying covariance matrix structure. Although we ac-
+knowledge the potential usefulness of employing k > 1 sparse loadings, we intentionally
+limit our exploration of this scenario. This decision is motivated by the considerable accu-
+racy achieved with the first loading only, coupled with potential drawbacks associated with
+using additional loadings. These drawbacks include increased computational costs and the
+risk of a stronger masking effect on the true structure of the covariance matrix. However,
+in our experience, these measures often resulted in incorrect covariance structures.
+
+The choice of the appropriate degree of sparsity for the singular vectors plays a funda-
+mental role in our methodology. To address this, we suggest to formulate the computation
+of the sparse loadings as a lasso regression problem. This allows us to use the HBIC to
+determine the appropriate sparsity level.
+
+For completeness, we want to mention that in the course of our research we also experi-
+mented with other approaches to determine the appropriate degree of sparsity. For example,
+we tried cross validation to select the appropriate sparseness in our formulated lasso regres-
+
+sion problem. However, as in the findings of Wang et al. (2007), this approach resulted in
+loadings that were not sufficiently sparse. To evaluate the validity of the detected blocks,
+we also considered dependency measures. In high-dimensional contexts, several methods
+have been developed to measure dependencies among subvectors (see, e.g., Sz´ekely and
+Rizzo (2013), Shen et al. (2020), Pan et al. (2020), Zhu et al. (2020), and Chatterjee (2021)
+among others). These measures typically yield zero values when the correlations between
+subvectors are zero. Furthermore, for our purposes, it would be necessary to establish a
+threshold value to determine when blocks can be considered uncorrelated.
+
+BD-SVD has been implemented in the newly developed R package bdsvd [reference not
+given to maintaining blind review], which was written specifically for this research project.
+
+SUPPLEMENTARY MATERIAL
+
+The online supplementary materials contain derivations and proofs, and R code to per-
+form the illustrative example and the simulation studies.
+
+References
+
+Baglama, J., L. Reichel, and B. W. Lewis (2022). irlba: Fast Truncated Singular Value
+Decomposition and Principal Components Analysis for Large Dense and Sparse Matrices.
+R package version 2.3.5.1.
+
+Bai, Z., D. Jiang, J.-F. Yao, and S. Zheng (2009). Corrections to LRT on large-dimensional
+covariance matrix by RMT. Ann. Stat. 37(6B), 3822–3840.
+
+Baik, J. and J. W. Silverstein (2006). Eigenvalues of large sample covariance matrices of
+spiked population models. J. Multivar. Anal. 97(6), 1382–1408.
+
+Bao, Z., J. Hu, G. Pan, and W. Zhou (2017). Test of independence for high-dimensional
+random vectors based on freeness in block correlation matrices. Electron. J. Stat. 11(1),
+1527–1548.
+
+Bauer, J. O. and B. Drabant (2021). Principal loading analysis. J. Multivar. Anal. 184.
+
+Bhattacharjee, A., W. G. Richards, J. E. Staunton, C. Li, S. Monti, P. P. Vasa, C. Ladd,
+J. Beheshti, R. Bueno, M. A. Gillette, M. Loda, G. Weber, E. J. Mark, E. S. Lander,
+W. Wong, B. E. Johnson, T. R. Golub, D. J. Sugarbaker, and M. L. Meyerson (2001).
+Classification of human lung carcinomas by mRNA expression profiling reveals distinct
+adenocarcinoma subclasses. Proc. Natl. Acad. Sci. U.S.A. 98, 13790–13795.
+
+Bickel, P. J. and E. Levina (2008).
+Covariance regularization by thresholding.
+Ann.
+Stat. 36(6), 2577–2604.
+
+Birke, M. and H. Dette (2005). A note on testing the covariance matrix for large dimension.
+Statist. Probab. Lett. 74(3), 281–289.
+
+Boileau, P., N. S. Hejazi, B. Collica, M. J. van der Laan, and S. Dudoit (2021). cvCovEst:
+Cross-validated covariance matrix estimator selection and evaluation in R.
+J. Open
+Source Softw. 6(63), 3273.
+
+Chatterjee, S. (2021).
+A new coefficient of correlation.
+J. Am. Stat. Assoc. 116(536),
+2009–2022.
+
+Chen, J. and Z. Chen (2008, 09). Extended Bayesian information criteria for model selection
+with large model spaces. Biometrika 95(3), 759–771.
+
+Chen, S. X., L.-X. Zhang, and P.-S. Zhong (2010). Tests for high-dimensional covariance
+matrices. J. Am. Stat. Assoc. 105(490), 810–819.
+
+Devijver, E. and M. Gallopin (2015). shock: Slope Heuristic for Block-Diagonal Covariance
+Selection in High Dimensional Gaussian Graphical Models. R package version 1.0.
+
+Devijver, E. and M. Gallopin (2018).
+Block-diagonal covariance selection for high-
+dimensional gaussian graphical models. J. Am. Stat. Assoc. 113(521), 306–314.
+
+Donoho, D. L. and I. M. Johnstone (1994). Ideal spatial adaptation by wavelet shrinkage.
+Biometrika 81(3), 425–455.
+
+Eckart, C. and G. Young (1936). The approximation of one matrix by another of lower
+rank. Psychometrika 1, 211–218.
+
+Fan, J. and R. Li (2001). Variable selection via nonconcave penalized likelihood and its
+oracle properties. J. Am. Stat. Assoc. 96(456), 1348–1360.
+
+Fan, J. and R. Li (2006). Statistical challenges with high dimensionality: Feature selection
+in knowledge discovery. In Proceedings of the International Congress of Mathematicians,
+Volume 3, pp. 595–622. European Mathematical Society.
+
+Fan, J., Y. Liao, and M. Mincheva (2013). Large covariance estimation by thresholding
+principal orthogonal complements. J. R. Stat. Soc. B 75(4), 603–680.
+
+Fan, Y. and C. Y. Tang (2012, 12). Tuning parameter selection in high dimensional penal-
+ized likelihood. J. R. Stat. Soc. B 75(3), 531–552.
+
+Fisher, T. J., X. Sun, and C. M. Gallagher (2010). A new test for sphericity of the covariance
+matrix for high dimensional data. J. Multivar. Anal. 101(10), 2554–2570.
+
+Friedman, J., T. Hastie, and R. Tibshirani (2007, 12). Sparse inverse covariance estimation
+with the graphical lasso. Biostatistics 9(3), 432–441.
+
+Gataric, M., T. Wang, and R. J. Samworth (2020). Sparse principal component analysis
+via axis-aligned random projections. J. R. Stat. Soc. B 82(2), 329–359.
+
+Hyodo, M., N. Shutoh, T. Nishiyama, and T. Pavlenko (2015). Testing block-diagonal
+covariance structure for high-dimensional data. Stat. Neerl. 69(4), 460–482.
+
+James, G., D. Witten, T. Hastie, and R. Tibshirani (2021). An Introduction to Statistical
+Learning with Applications in R (2nd ed.). New York, USA: Springer.
+
+Jiang, D., Z. Bai, and S. Zheng (2013). Testing the independence of sets of large-dimensional
+variables. Sci. China Math. 56, 135–147.
+
+Jiang, T. and F. Yang (2013). Central limit theorems for classical likelihood ratio tests for
+high-dimensional normal distributions. Ann. Stat. 41(4), 2029–2074.
+
+Johnstone, I. M. (2001). On the distribution of the largest eigenvalue in principal compo-
+nents analysis. Ann. Stat. 29(2), 295–327.
+
+Johnstone, I. M. (2008). Multivariate analysis and Jacobi ensembles: Largest eigenvalue,
+Tracy–Widom limits and rates of convergence. Ann. Stat. 36(6), 2638–2716.
+
+Johnstone, I. M. and A. Y. Lu (2009). On consistency and sparsity for principal components
+analysis in high dimensions. J. Am. Stat. Assoc. 104(486), 682–693.
+
+Ledoit, O. and M. Wolf (2002). Some hypothesis tests for the covariance matrix when the
+dimension is large compared to the sample size. Ann. Stat. 30(4), 1081–1102.
+
+Leung, D. and M. Drton (2018). Testing independence in high dimensions with sums of
+rank correlations. Ann. Stat. 46(1), 280–307.
+
+Liu, Y., D. N. Hayes, A. Nobel, and J. S. Marron (2008). Statistical significance of clustering
+for high-dimension, low–sample size data. J. Am. Stat. Assoc. 103(483), 1281–1293.
+
+Pan, W., X. Wang, H. Zhang, H. Zhu, and J. Zhu (2020). Ball covariance: A generic
+measure of dependence in banach space. J. Am. Stat. Assoc. 115(529), 307–317.
+
+Paul, D. (2007).
+Asymptotics of sample eigenstructure for a large dimensional spiked
+covariance model. Stat. Sin. 17(4), 1617–1642.
+
+Pavlenko, T., A. Bj¨orkstr¨om, and A. Tillander (2012). Covariance structure approximation
+via glasso in high-dimensional supervised classification. J. Appl. Stat. 39(8), 1643–1666.
+
+R Core Team (2022). R: A Language and Environment for Statistical Computing. Vienna,
+Austria: R Foundation for Statistical Computing.
+
+Rothman, A. J., E. Levina, and J. Zhu (2009). Generalized thresholding of large covariance
+matrices. J. Am. Stat. Assoc. 104(485), 177–186.
+
+Schott,
+J.
+R.
+(2005).
+Testing
+for
+complete
+independence
+in
+high
+dimensions.
+Biometrika 92(4), 951–956.
+
+Schwarz, G. (1978). Estimating the dimension of a model. Ann. Stat. 6(2), 461–464.
+
+Shen, C., C. E. Priebe, and J. T. Vogelstein (2020). From distance correlation to multiscale
+graph correlation. J. Am. Stat. Assoc. 115(529), 280–291.
+
+Shen, D., H. Shen, and J. S. Marron (2013). Consistency of sparse PCA in high dimension,
+low sample size contexts. J. Multivar. Anal. 115, 317–333.
+
+Shen, H. and J. Z. Huang (2008). Sparse principal component analysis via regularized low
+rank matrix approximation. J. Multivar. Anal. 99(6), 1015–1034.
+
+Srivastava, M. S. and N. Reid (2012). Testing the structure of the covariance matrix with
+fewer observations than the dimension. J. Multivar. Anal. 112, 156–171.
+
+Sz´ekely, G. J. and M. L. Rizzo (2013). The distance correlation t-test of independence in
+high dimension. J. Multivar. Anal. 117, 193–213.
+
+Sz´ekely, G. J., M. L. Rizzo, and N. K. Bakirov (2007). Measuring and testing dependence
+by correlation of distances. Ann. Stat. 35(6), 2769–2794.
+
+Tan, K. M., D. Witten, and A. Shojaie (2015). The cluster graphical lasso for improved
+estimation of gaussian graphical models. Comput. Stat. Data Anal. 85, 23–36.
+
+Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. J. R. Stat. Soc.
+B 58(1), 267–288.
+
+Wang, H., B. Li, and C. Leng (2009). Shrinkage tuning parameter selection with a diverging
+number of parameters. J. R. Stat. Soc. B 71(3), 671–683.
+
+Wang, H., R. Li, and C.-L. Tsai (2007, 08). Tuning parameter selectors for the smoothly
+clipped absolute deviation method. Biometrika 94(3), 553–568.
+
+Wang, L., Y. Kim, and R. Li (2013). Calibrating nonconvex penalized regression in ultra-
+high dimension. Ann. Stat. 41(5), 2505–2536.
+
+Witten, D. M., R. Tibshirani, and T. A. Hastie (2009). A penalized matrix decomposi-
+tion, with applications to sparse principal components and canonical correlation analysis.
+Biostatistics 10(3), 515–534.
+
+Yamada, Y., M. Hyodo, and T. Nishiyama (2017). Testing block-diagonal covariance struc-
+ture for high-dimensional data under non-normality. J. Multivar. Anal. 155, 305–316.
+
+Yang, D., Z. Ma, and A. Buja (2014). A sparse singular value decomposition method for
+high-dimensional data. J. Comput. Graph. Stat. 23(4), 923–942.
+
+Yata, K. and M. Aoshima (2016). High-dimensional inference on covariance structures via
+the extended cross-data-matrix methodology. J. Multivar. Anal. 151, 151–166.
+
+Yu, Y., T. Wang, and R. J. Samworth (2015).
+A useful variant of the Davis—Kahan
+theorem for statisticians. Biometrika 102(2), 315–323.
+
+Zhu, C., X. Zhang, S. Yao, and X. Shao (2020). Distance-based and RKHS-based depen-
+dence metrics in high dimension. Ann. Stat. 48(6), 3366–3394.
+
+Zou, H., T. Hastie, and R. Tibshirani (2006). Sparse principal component analysis. J.
+Comput. Graph. Stat. 15(2), 265–286.
+
+Zou, H., T. Hastie, and R. Tibshirani (2007). On the “degrees of freedom” of the lasso.
+Ann. Stat. 35(5), 2173–2192.
+
